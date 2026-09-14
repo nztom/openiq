@@ -22,9 +22,21 @@ READ=['guildstats','warlog','trends','gear','gearlist','rankings','whois','unlin
 EXTRA=['exception','removeexception','unlink','unlink-twitch','reset-class','gearping','setbotchannel','setsyncnotifications','seteventlog','configweeklysummary','setup']
 COMMANDS=sorted(set(ALIASES)|set(READ)|set(EXTRA))
 
+
+def minimum_role(command):
+    from guilds.catalog import ACTIONS
+    if command in ALIASES:
+        module,action=ALIASES[command]
+        item=next((item for item in ACTIONS if item['module']==module and item['action']==action),None)
+        if item:return item['role']
+    if command in ['reload-commands','redeploy-slash-commands']:return 'owner'
+    if command in ['unlinked','performance-flags list','retention','sync-status','exception','removeexception','unlink','gearping','setbotchannel','setsyncnotifications','seteventlog','configweeklysummary','setup']:return 'admin'
+    return 'member'
+
 def dispatch(g,command,p,role,user):
     from .registry import MODULES
     if command not in COMMANDS: raise Invalid('Unknown command')
+    require(role,minimum_role(command))
     minimum=g.config.get('command_permissions',{}).get(command)
     if minimum: require(role,minimum)
     if command in ALIASES:
@@ -38,10 +50,7 @@ def dispatch(g,command,p,role,user):
             if not m: raise Invalid('Link your member first')
             p={**p,'member':m.key}
         if command=='sync roster' and 'names' not in p:
-            from .integrations import fetch_roster
-            url=g.config.get('sync',{}).get('url')
-            if not url:raise Invalid('Configure a verified roster source or provide reviewed names')
-            p={**p,'names':fetch_roster(url)}
+            raise Invalid('Use the shared service to prepare roster synchronization')
         return MODULES[module].handle(g,action,p,role,user)
     if command=='help':return {'commands':COMMANDS}
     if command=='guildstats':return calculate(g)['totals']

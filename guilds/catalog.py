@@ -15,6 +15,7 @@ ACTIONS=[
  a('wars','review','Review scores',[f('csv','Scores (CSV: name,kills,deaths)','textarea',default='name,kills,deaths\n')]),
  a('wars','save','Record war',[f('date','War date','date'),f('type','Type','select',['Node','Siege']),f('result','Result','select',['Win','Loss','Draw']),f('location','Node / castle'),f('opponents','Opposing guilds'),f('capped','Capped','checkbox'),f('cap','Cap details'),f('participants','Participants','participants'),f('note','Note','textarea')]),
  a('wars','delete','Delete war',[WAR]),
+ a('wars','export','Export war package',[WAR]),
  a('events','save','Create event',[f('title','Title'),f('type','Type','select',['Node','Siege','Practice','Custom']),f('at','Start','datetime-local'),f('timezone','Timezone',default='Pacific/Auckland'),f('teams','Teams (name,capacity,optional group per line)','teams',default='Frontline,20\nFlex,10\nBackline,20'),f('recurrence_days','Repeat every N days (0 = once)','number',default=0),f('image','Card image URL (optional)','url'),f('accent','Accent color (optional)',default='')]),
  a('events','signup','Sign up / move team',[EVENT,MEM,f('team','Team name (empty to withdraw)')],'member'),
  a('events','template','Save event preset',[EVENT,f('name','Preset name')]),
@@ -39,6 +40,7 @@ ACTIONS=[
  a('community','ticket','Open ticket',[f('category','Category',default='General'),f('subject','Subject'),f('text','Message','textarea')],'member'),
  a('community','reply','Reply to ticket',[f('ticket','Ticket','ticket'),f('text','Reply','textarea')],'member'),
  a('community','close_ticket','Close ticket',[f('ticket','Ticket','ticket')]),
+ a('community','reopen_ticket','Reopen ticket',[f('ticket','Ticket','ticket')]),
  a('community','ticket_preview','Preview Discord ticket channel',[f('ticket','Ticket','ticket')]),
  a('community','apply','Submit application',[f('family','Family name'),f('answers','Tell us about your class, gear and availability','textarea')],'member'),
  a('community','review_application','Review application',[f('application','Application','application'),f('status','Decision','select',['accepted','rejected']),f('review','Review notes','textarea')]),
@@ -93,3 +95,6 @@ for action in ACTIONS:
     if action['module']=='operations' and action['action']=='challenge':action['role']='member'
 
 ACTIONS += [a('coaching','notify','Preview lead notification',[f('assignment','Assignment','assignment')])]
+ACTIONS += [a('privacy','export','Export member data',[MEM],'member'),a('privacy','unlink','Unlink member identity',[MEM],'member'),
+            a('privacy','anonymize','Anonymize member',[MEM,f('confirmation','Type the member name')],'member'),
+            a('privacy','delete','Delete membership and identifying data',[MEM,f('confirmation','Type the member name')],'member')]

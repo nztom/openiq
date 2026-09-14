@@ -14,6 +14,12 @@ def participants(g, raw):
 
 def handle(g,action,p,role,user):
     require(role)
+    if action=='export':
+        war=get(g,'war',p['war'])
+        member_ids={row['member'] for row in war.data['participants']}
+        linked={kind:[public(r) for r in rows(g,kind) if r.data.get('war')==war.key or (kind=='session' and r.key==war.data.get('session'))] for kind in ('event','session','import','war_revision')}
+        return {'format':'openiq-war-v1','exported':now(),'guild':{'id':g.pk,'name':g.name,'region':g.region},'war':public(war),
+                'members':[{'id':m.key,**{k:m.data.get(k) for k in ('name','character','class','spec')}} for m in rows(g,'member') if m.key in member_ids],**linked}
     if action=='review':
         raw=p.get('rows')
         if raw is None:

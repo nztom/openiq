@@ -31,9 +31,36 @@ class WelcomeTests(TestCase):
         with self.assertRaises(Invalid):choose(self.user,self.g,self.m,'200')
         self.assertEqual(components(Guild(name='Empty'),get(self.g,'member',self.m)),[])
     def test_remote_role_grant_and_failure_do_not_fake_local_success(self):
+        context=patch('guilds.discord_welcome.role_context',return_value=({'200':{'position':1}},10))
+        context.start();self.addCleanup(context.stop)
         with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'0'}),self.assertRaises(Invalid):choose(self.user,self.g,self.m,'200',True)
         with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}),patch('httpx.put',side_effect=httpx.ConnectError('offline')),self.assertRaises(httpx.ConnectError):choose(self.user,self.g,self.m,'200',True)
         self.assertNotIn('community_roles',get(self.g,'member',self.m).data)
         with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}),patch('httpx.put',return_value=Mock()) as request:
             result=choose(self.user,self.g,self.m,'200',True)
             self.assertTrue(request.call_args.args[0].endswith('/guilds/100/members/400/roles/200'));self.assertEqual(result['delivery'],'Discord')
+
+    def test_role_hierarchy_and_manage_roles_validation(self):
+        from .discord_welcome import role_context,manageable
+        responses=[]
+        for data in ({'id':'900'},{'roles':['800']},[{'id':'800','position':10,'permissions':str(1<<28)},{'id':'200','position':1,'permissions':'0'}]):
+            response=Mock();response.json.return_value=data;responses.append(response)
+        with patch.dict('os.environ',{'DISCORD_BOT_TOKEN':'test'}),patch('httpx.get',side_effect=responses):
+            roles,highest=role_context('100')
+        manageable(roles,highest,'100','200')
+        for role in ('100','800','999'):
+            with self.assertRaises(Invalid):manageable(roles,highest,'100',role)
+        roles['200']['managed']=True
+        with self.assertRaises(Invalid):manageable(roles,highest,'100','200')
+        responses[-1].json.return_value=[{'id':'800','position':10,'permissions':'0'}]
+        with patch.dict('os.environ',{'DISCORD_BOT_TOKEN':'test'}),patch('httpx.get',side_effect=responses),self.assertRaisesMessage(Invalid,'Manage Roles'):role_context('100')
+
+    def test_replace_only_removes_roles_previously_granted_by_openiq(self):
+        self.g.config['welcome']['replace_selection']=True;self.g.save()
+        from .modules.core import save
+        save(self.g,'welcome_delivery',{'roles':['300']},self.m)
+        with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}),patch('guilds.discord_welcome.role_context',return_value=({'200':{'position':1},'300':{'position':2}},10)),patch('httpx.put',return_value=Mock()),patch('httpx.delete',return_value=Mock()) as remove:
+            result=choose(self.user,self.g,self.m,'200',True)
+        self.assertEqual(result['community_roles'],['Raider'])
+        self.assertTrue(remove.call_args.args[0].endswith('/roles/300'))
+        self.assertEqual(Record.objects.get(kind='welcome_delivery').data['roles'],['200'])

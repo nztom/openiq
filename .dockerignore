@@ -11,6 +11,7 @@ __pycache__
 *.sqlite3
 *.sqlite3-*
 .secret-key
+.backend-admin.json
 .env
 .env.*
 !.env.example
@@ -18,3 +19,14 @@ media
 staticfiles
 docs/*.png
 .pytest_cache
+
+node_modules
+backups
+.heartbeat-*.json
+.capture-token
+release-report.json
+release-gate.log
+release-safety.log
+readiness-tests.log
+postgres-tests.log
+coverage-gaps.log

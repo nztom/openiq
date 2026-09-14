@@ -4,6 +4,7 @@ __pycache__/
 *.sqlite3
 .env
 .secret-key
+.backend-admin.json
 media/
 staticfiles/
 *.sqlite3-*
@@ -13,3 +14,10 @@ staticfiles/
 !.coveragerc
 htmlcov/
 coverage.json
+backups/
+.capture-token
+.heartbeat-*.json
+node_modules/
+
+/*.log
+/release-report.json

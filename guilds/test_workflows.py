@@ -125,7 +125,7 @@ class WorkflowTests(TestCase):
             self.assertTrue(request.call_args.args[1].endswith('/456'))
             item.status='preview';item.save();request.side_effect=httpx.ConnectError('offline')
             with self.assertRaises(httpx.ConnectError):deliver(item,True)
-            item.refresh_from_db();self.assertEqual(item.status,'preview')
+            item.refresh_from_db();self.assertEqual(item.status,'retry')
     def test_ai_errors_and_permission(self):
         m=self.roster()
         with patch.dict(os.environ,{'OLLAMA_MODEL':''}):
@@ -243,7 +243,7 @@ class WorkflowTests(TestCase):
     def test_health_reports_database_failure(self):
         from django.db import DatabaseError
         self.assertEqual(self.client.get('/healthz/').status_code,200)
-        with patch('guilds.views.Guild.objects.exists',side_effect=DatabaseError()):self.assertEqual(self.client.get('/healthz/').status_code,503)
+        with patch('guilds.health.connection.cursor',side_effect=DatabaseError()):self.assertEqual(self.client.get('/readyz/').status_code,503)
     def test_live_log_link_and_war_deletion_clear_related_references(self):
         m=self.roster();s=self.act('live','start',{'title':'Fight'})
         result=self.act('live','import_log',{'session':s['id'],'text':'[01:00:00] Alpha has killed Enemy from Rival','date':'2026-09-01'})

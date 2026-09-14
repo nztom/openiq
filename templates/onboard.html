@@ -1,0 +1,9 @@
+{% load static %}<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Set up your guild · OpenIQ</title><link rel="stylesheet" href="{% static 'app.css' %}"></head><body><main class="login"><h1>Set up your guild</h1><p>Choose a Discord server you manage, then prepare the guild workspace.</p>
+<ol><li>Select your server, guild name and region.</li><li>Invite the bot if you want Discord commands and notifications.</li><li>Open Settings to configure member roles, channels and schedules.</li></ol>
+{% if servers or development %}<form id="setup-form">{% csrf_token %}
+<label>Discord server{% if development and not servers %}<input name="server_id" required pattern="[0-9]+" placeholder="Discord server ID">{% else %}<select name="server_id" aria-label="Discord server" required>{% for server in servers %}<option value="{{ server.id }}">{{ server.name }}</option>{% endfor %}</select>{% endif %}</label>
+<label>Guild name<input name="name" required maxlength="80"></label><label>Region<select name="region" aria-label="Region">{% for region in regions %}<option>{{ region }}</option>{% endfor %}</select></label>
+<p id="setup-error" role="alert" tabindex="-1"></p><button type="submit">Create guild workspace</button></form>
+{% if client_id %}<p><a id="bot-invite" data-client="{{ client_id }}" target="_blank" rel="noopener noreferrer">Invite the Discord bot</a></p>{% else %}<p>The operator still needs to configure the Discord application before a bot invite is available.</p>{% endif %}
+{% else %}<p>No manageable Discord servers were found. Sign in with an account that owns a server or has Administrator or Manage Guild permission.</p><p><a href="/auth/discord/">Refresh Discord sign-in</a></p>{% endif %}
+<p><a href="/">Return to dashboard</a></p></main><script src="{% static 'onboard.js' %}" defer></script></body></html>

@@ -2,8 +2,8 @@ import json
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404
-from django.views.decorators.http import require_POST
+from django.shortcuts import render, get_object_or_404,redirect
+from django.views.decorators.http import require_POST,require_http_methods
 from django.core.exceptions import PermissionDenied
 from .models import Guild,Record,Access,Audit,Outbox
 from .services import access,execute
@@ -14,14 +14,16 @@ from .catalog import ACTIONS
 @login_required
 def index(request):
     guilds=Guild.objects.filter(access__user=request.user).order_by('name')
+    if not guilds.exists():
+        return redirect('/onboard/')
     return render(request,'dashboard.html',{'guilds':guilds,'actions':ACTIONS})
 
 @login_required
 def state(request,guild_id):
     g=get_object_or_404(Guild,pk=guild_id); role=access(request.user,g)
     records={}
-    private={'lead','assignment','adoption','import'}
-    for r in Record.objects.filter(guild=g).exclude(kind__in=['alliance','adoption','bot_receipt']):
+    private={'lead','assignment','adoption','import','war_revision','delivery','delivery_retry','delivery_pending','ticket_channel','ticket_pending','welcome_delivery'}
+    for r in Record.objects.filter(guild=g).exclude(kind__in=['alliance','adoption','bot_receipt','capture_token']):
         if role=='member' and r.kind in private: continue
         if r.kind in ['ticket','application','reminder','minigame'] and role=='member' and r.data.get('user',r.key)!=request.user.pk and str(r.data.get('user',r.key))!=str(request.user.pk): continue
         d=public(r)
@@ -30,8 +32,14 @@ def state(request,guild_id):
         if r.kind=='session': d['summary']=live.summarize(r)
         records.setdefault(r.kind,[]).append(d)
     records['alliance']=alliances.overview(g)
-    result={'guild':{'id':g.pk,'name':g.name,'revision':g.revision,'config':g.config if role=='owner' else {}},'role':role,'user':{'id':request.user.pk,'name':request.user.username},'records':records,'analytics':analytics.calculate(g,request.GET),'intelligence':intelligence.extended(g),'rankings':gear.rankings(g),'gear':gear.current(g),'flags':coaching.flags(g) if role!='member' else [],'actions':[a for a in ACTIONS if {'member':0,'admin':1,'owner':2}[a['role']]<={'member':0,'admin':1,'owner':2}[role]],'guilds':list(Guild.objects.values('id','name')),'accounts':list(Access.objects.filter(guild=g).values('user_id','user__username','role')) if role=='owner' else []}
+    from .war_checklist import checklist
+    result={'guild':{'id':g.pk,'name':g.name,'revision':g.revision,'config':g.config if role=='owner' else {}},'role':role,'user':{'id':request.user.pk,'name':request.user.username},'records':records,'analytics':analytics.calculate(g,request.GET),'intelligence':intelligence.extended(g),'rankings':gear.rankings(g),'gear':gear.current(g),'flags':coaching.flags(g) if role!='member' else [],'actions':[a for a in ACTIONS if {'member':0,'admin':1,'owner':2}[a['role']]<={'member':0,'admin':1,'owner':2}[role]],'guilds':list(Guild.objects.filter(access__user=request.user).distinct().values('id','name')),'accounts':list(Access.objects.filter(guild=g).values('user_id','user__username','role')) if role=='owner' else []}
     if role!='member': result.update(outbox=list(Outbox.objects.filter(guild=g).order_by('-created').values('id','text','status','created')[:100]),audit=list(Audit.objects.filter(guild=g).order_by('-created').values('actor','action','created')[:100]))
+    if role!='member':result['war_checklist']=checklist(g)
+    if role=='owner':
+        from .integration_status import status
+        from .modules.commands import COMMANDS
+        result['integration_status']=status(g);result['command_names']=COMMANDS
     return JsonResponse(result)
 
 @login_required
@@ -47,11 +55,21 @@ def action(request,guild_id,module,name):
 @require_POST
 def ocr_view(request,guild_id):
     role=access(request.user,guild_id)
-    if role=='member' and request.POST.get('mode')!='gear': raise PermissionDenied()
+    if role=='member' and request.POST.get('mode')!='gear':
+        raise PermissionDenied()
     try:
         files=request.FILES.getlist('images')
-        if not files or len(files)>10: raise Invalid('Choose 1–10 images')
-        texts=[integrations.ocr(f.read()) for f in files]
+        if getattr(request,'upload_too_large',False) or sum(f.size for f in files)>12*1024*1024:
+            return JsonResponse({'error':'Combined images exceed 12 MiB'},status=413)
+        if not files or len(files)>10:
+            raise Invalid('Choose 1–10 images')
+        import time
+        deadline=time.monotonic()+45;texts=[]
+        for file in files:
+            remaining=deadline-time.monotonic()
+            if remaining<=0:
+                raise Invalid('OCR request exceeded its processing budget')
+            texts.append(integrations.ocr(file.read(),timeout=remaining))
         result={'texts':texts,'review_required':True}
         if request.POST.get('mode')=='gear':result['gear']=integrations.gear_numbers(texts)
         else:
@@ -68,10 +86,16 @@ def recap(request,token):
     return render(request,'recap.html',{'session':session.data,'summary':live.summarize(session)})
 
 @login_required
-@require_POST
+@require_http_methods(['GET','POST'])
 def onboard(request):
     from django.db import transaction
-    from .modules.core import text
+    from .modules.core import text,choice
+    regions=['NA','EU','SEA','KR','JP','TW','SA','RU','MENA']
+    if request.method=='GET':
+        import os
+        from .discord_auth import can_manage_server
+        servers=[server for server in request.session.get('discord_guilds',[]) if can_manage_server(server)]
+        return render(request,'onboard.html',{'servers':servers,'regions':regions,'development':settings.ALLOW_LOCAL_LOGIN,'client_id':os.getenv('DISCORD_CLIENT_ID','')})
     try:
         p=json.loads(request.body);server_id=str(p.get('server_id',''))
         if not settings.ALLOW_LOCAL_LOGIN:
@@ -85,7 +109,7 @@ def onboard(request):
             name=text(p['name'],'guild name',80)
             if Guild.objects.filter(name__iexact=name).exists():
                 raise Invalid('That guild already exists')
-            g=Guild.objects.create(name=name,region=text(p.get('region','NA'),'region',12),server_id=server_id)
+            g=Guild.objects.create(name=name,region=choice(p.get('region','NA'),regions,'region'),server_id=server_id)
             Access.objects.create(guild=g,user=request.user,role='owner')
             if p.get('names'):execute(request.user,g.pk,'roster','sync',{'names':p['names']})
         return JsonResponse({'id':g.pk,'name':g.name})
@@ -96,9 +120,11 @@ def ally_event(request,token):
     from .modules.alliances import visible
     from django.http import Http404
     e=next((r for r in Record.objects.filter(kind='event') if r.data.get('alliance_share') and r.data.get('share_token')==str(token)),None)
-    if not e:raise Http404()
+    if not e:
+        raise Http404()
     accessible=set(Guild.objects.filter(access__user=request.user).values_list('id',flat=True))
-    if e.guild_id not in accessible and not any(a.data['status']=='active' and accessible.intersection(map(int,a.data['guilds'])) for a in visible(e.guild)):raise PermissionDenied()
+    if e.guild_id not in accessible and not any(a.data['status']=='active' and accessible.intersection(map(int,a.data['guilds'])) for a in visible(e.guild)):
+        raise PermissionDenied()
     from .modules.core import rows
     names={m.key:m.data['name'] for m in rows(e.guild,'member')}
     return render(request,'ally_event.html',{'event':e.data,'guild':e.guild.name,'signups':[{**s,'name':names.get(s['member'],'Unknown')} for s in e.data['signups']]})
@@ -116,12 +142,14 @@ def recover(request):
         if not settings.ALLOW_LOCAL_LOGIN:
             from .discord_auth import can_manage_server,synchronize
             tokens=request.session.get('discord_tokens')
-            if not tokens or not request.user.username.startswith('discord_'):raise PermissionDenied('Discord login is required for guild recovery')
+            if not tokens or not request.user.username.startswith('discord_'):
+                raise PermissionDenied('Discord login is required for guild recovery')
             import httpx
             try:servers=synchronize(request.user,tokens['access'])
             except (httpx.HTTPError,KeyError,ValueError,TypeError):raise PermissionDenied('Discord authority could not be verified')
             request.session['discord_guilds']=servers
-            if not any(server['id']==server_id and can_manage_server(server) for server in servers):raise PermissionDenied('Manage Guild permission is required on the destination Discord server')
+            if not any(server['id']==server_id and can_manage_server(server) for server in servers):
+                raise PermissionDenied('Manage Guild permission is required on the destination Discord server')
         with transaction.atomic():
             g=get_object_or_404(Guild,pk=p['guild'])
             from django.db.models import F
@@ -140,8 +168,10 @@ def recover(request):
 
 
 def health(request):
-    from django.db import DatabaseError
-    try:
-        Guild.objects.exists()
-        return JsonResponse({'status':'ok','application':'OpenIQ'})
-    except DatabaseError:return JsonResponse({'status':'unavailable'},status=503)
+    return JsonResponse({'status':'ok','application':'OpenIQ'})
+
+
+def ready(request):
+    from .health import readiness
+    report=readiness()
+    return JsonResponse(report,status=200 if report['status']=='ok' else 503)

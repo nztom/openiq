@@ -12,6 +12,49 @@ from .discord_tickets import synchronize,plan,VIEW,SEND
 from .modules.core import Invalid,get
 
 class DiscordTicketTests(TestCase):
+    def test_reopen_preserves_transcript_and_rejects_members(self):
+        execute(self.member,self.g.pk,'community','reply',{'ticket':self.ticket,'text':'Keep this'})
+        execute(self.owner,self.g.pk,'community','close_ticket',{'ticket':self.ticket})
+        with self.assertRaises(PermissionDenied):execute(self.member,self.g.pk,'community','reopen_ticket',{'ticket':self.ticket})
+        result=execute(self.owner,self.g.pk,'community','reopen_ticket',{'ticket':self.ticket})
+        self.assertEqual(result['status'],'open');self.assertEqual(result['replies'][0]['text'],'Keep this')
+        self.assertEqual(plan(self.g,get(self.g,'ticket',self.ticket))['channel']['permission_overwrites'][1]['deny'],'0')
+
+    def test_lost_channel_response_is_reconciled_without_second_create(self):
+        with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}):
+            with patch('httpx.request',side_effect=httpx.ReadTimeout('lost')):
+                with self.assertRaises(httpx.ReadTimeout):synchronize(self.owner,self.g,self.ticket,True)
+            channels=Mock();channels.json.return_value=[{'id':'700','type':0,'topic':f'OpenIQ ticket {self.g.pk}:{self.ticket}\nHelp'}]
+            response=Mock();response.json.return_value={'id':'700'}
+            with patch('httpx.request',side_effect=[channels,response,response]) as request:
+                synchronize(self.owner,self.g,self.ticket,True)
+            self.assertEqual([c.args[0] for c in request.call_args_list],['GET','PATCH','POST'])
+            self.assertFalse(Record.objects.filter(kind='ticket_pending').exists())
+
+    def test_uncertain_absent_channel_does_not_create_duplicate(self):
+        from .modules.core import save
+        save(self.g,'ticket_pending',{},self.ticket)
+        response=Mock();response.json.return_value=[]
+        with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}),patch('httpx.request',return_value=response) as request:
+            with self.assertRaisesMessage(Invalid,'unresolved'):synchronize(self.owner,self.g,self.ticket,True)
+        self.assertEqual(request.call_count,1)
+
+    def test_lost_message_response_recovers_transcript(self):
+        from .delivery import deliver
+        from .models import Outbox
+        item=Outbox.objects.create(guild=self.g,key='lost-message',channel='700',text='Transcript')
+        with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}):
+            with patch('httpx.request',side_effect=httpx.ReadTimeout('lost')):
+                with self.assertRaises(httpx.ReadTimeout):deliver(item,True)
+            messages=Mock();messages.json.return_value=[{'id':'800','author':{'bot':True,'id':'200'},'embeds':[{'footer':{'text':f'OpenIQ delivery {self.g.pk}:{item.pk}'}}]}]
+            bot=Mock();bot.json.return_value={'id':'200'}
+            verified=Mock();verified.json.return_value={'id':'800','author':{'id':'200'},'channel_id':'700'}
+            with patch('httpx.get',side_effect=[bot,messages,verified]):call_command('reconcile_delivery',item.pk,find=True,stdout=io.StringIO())
+            response=Mock();response.json.return_value={'id':'800'}
+            with patch('httpx.request',return_value=response) as request:deliver(item,True)
+            self.assertEqual([c.args[0] for c in request.call_args_list],['PATCH'])
+            item.refresh_from_db();self.assertEqual(item.status,'sent')
+
     def setUp(self):
         self.owner=User.objects.create_user('owner');self.member=User.objects.create_user('member')
         self.g=Guild.objects.create(name='Guild',server_id='100',config={'tickets':{'bot_user_id':'200','staff_role':'300','category_id':'400'}})

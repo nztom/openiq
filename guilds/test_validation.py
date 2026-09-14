@@ -49,7 +49,7 @@ class ValidationTests(SimpleTestCase):
         with tempfile.TemporaryDirectory() as temp,patch.dict(os.environ,{'OPENIQ_DATA_DIR':temp,'SECRET_KEY':'','DEBUG':'0','HTTPS':'1','TRUST_PROXY':'1'}):
             first=runpy.run_path(str(root/'config/settings.py'));second=runpy.run_path(str(root/'config/settings.py'))
             self.assertEqual(first['SECRET_KEY'],second['SECRET_KEY'])
-            self.assertEqual((Path(temp)/'.secret-key').stat().st_mode&0o777,0o600)
+            if os.name != 'nt':self.assertEqual((Path(temp)/'.secret-key').stat().st_mode&0o777,0o600)
             self.assertTrue(first['SECURE_SSL_REDIRECT']);self.assertEqual(first['SECURE_PROXY_SSL_HEADER'],('HTTP_X_FORWARDED_PROTO','https'))
     def test_empty_capture_lines_and_invalid_choice(self):
         from .capture import JsonLineTail

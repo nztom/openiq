@@ -38,13 +38,52 @@ settings from `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`,
 SQLite options are never passed to PostgreSQL. Connections default to closing at
 the end of a request (`CONN_MAX_AGE=0`).
 
-This is configuration scaffolding, not a validated PostgreSQL deployment.
-Before enabling it, add and lock a compatible psycopg driver, provision a test
-database, run the integration matrix, implement PostgreSQL snapshot/restore
-operations, and document data transfer from SQLite. The shipped image does not
-include that driver or a PostgreSQL server. Selecting PostgreSQL does not migrate
-existing SQLite data. The backup command explicitly rejects PostgreSQL until its
-snapshot adapter exists.
+The driver is locked to psycopg 3.3.5. Native `pg_dump` custom-format snapshots
+and transactional `pg_restore` are implemented. Install PostgreSQL client tools
+on PATH at least as new as the server; the default Bookworm image includes its
+distribution client (PostgreSQL 15). Use a matching client image/package for newer
+servers. Server provisioning remains an operator responsibility.
+
+Run the real integration gate with a disposable PostgreSQL database and a role
+allowed to create test databases:
+
+```sh
+DATABASE_BACKEND=postgresql DATABASE_NAME=openiq_test DATABASE_USER=openiq \
+DATABASE_HOST=127.0.0.1 DATABASE_PORT=5432 python manage.py test guilds.test_postgres
+```
+
+The tests run Django migrations, concurrent guild mutations, a native snapshot,
+and restore to a separate temporary database. PostgreSQL 17.11 on Windows passed
+the concurrency and snapshot/restore checks during development. Never point test
+credentials at a production role or database.
+
+To restore, stop all application writers, configure a dedicated destination
+PostgreSQL database and the snapshot's signing key, then run
+`python manage.py restore_postgres SNAPSHOT_DIRECTORY --overwrite`. Checksums
+are verified before `pg_restore --single-transaction --clean --if-exists` runs;
+Django and migration checks follow. Keep a pre-restore backup. A post-restore
+application check failure requires operator investigation before restarting.
+
+## SQLite to PostgreSQL transfer
+
+1. Stop web, scheduler, bot and backup writers. Keep an online SQLite backup and
+   its signing key, and keep the original data volume intact for rollback.
+2. With the SQLite configuration active, export a private Django fixture:
+   `python manage.py dumpdata --natural-foreign --natural-primary --exclude contenttypes --exclude auth.permission --output transfer.json`.
+3. Provision an empty PostgreSQL database and dedicated owner role. Set the
+   `DATABASE_*` variables listed above and retain the same application signing
+   key. Run `python manage.py migrate --noinput`, then
+   `python manage.py loaddata transfer.json`.
+4. Run `python manage.py check` and `python manage.py migrate --check`. Compare
+   guild/member/war counts and inspect representative exports before reopening
+   access. Create and restore a PostgreSQL backup into another empty database.
+5. Start one writer service at a time. If validation fails, stop all writers and
+   return to the original SQLite configuration and unchanged data volume.
+   Remove the private transfer fixture only after acceptance and an off-host backup.
+
+Selecting a backend does not automatically move data. After PostgreSQL receives
+new writes, rollback to the original SQLite database loses those newer changes;
+plan the cutover and acceptance window accordingly.
 
 ## Mutation locking
 

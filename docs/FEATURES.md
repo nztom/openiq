@@ -1,43 +1,40 @@
-# Prototype feature status
+# Feature status
 
-This audit records implemented features and known limitations. The [research inventory](RESEARCH.md) remains the target. “Working” below means local behavior is implemented; “adapter” means code exists but the real remote service was not exercised. “Simulated” is an explicit test input, not real game data.
+Implemented means validated locally with synthetic data or controlled remote
+responses. It does not mean a live Discord/BDO/Twitch installation has passed
+acceptance. [RUNBOOK.md](RUNBOOK.md) is the operator entry point. The current
+feature boundary and actionable backlog live in [the task register](../tasks/README.md);
+this document remains the detailed capability matrix.
 
-| Feature family | Working prototype | Remaining parity work |
+| Area | Implemented | Still requires external verification |
 |---|---|---|
-| Setup / identity | Local guild onboarding, owner/admin/member accounts, guild picker, reviewed roster sync, Discord-family links; OAuth adapter, role refresh, one-use adoption key | Live Discord setup wizard; test regional BDO roster pages. Local recovery supports expiring, single-use adoption keys |
-| Roster | Add/edit/inactivate, search, class filter, stat sorting, draggable groups, class/spec and historical backfill, private notes, exceptions, dated vacations, merge | Card animation and remaining filter combinations; last-war/vacation sorting and merges across wars, gear, coaching and event signups are implemented |
-| Score ingestion | CSV review, visible confidence/fuzzy suggestions, required correction for unmatched names, paired-image Tesseract OCR, alignment validation, manual corrections, atomic finalize, repeat-finalize prevention | Real BDO screenshot corpus, language/crop presets and extraction accuracy benchmarking |
-| War history | Create/edit/delete with import/link cleanup, dates/types/results, node/castle, opponents, cap details, participant add/remove via form, class snapshot, K/D exclusion and alliance sharing, notes, workflow status, direct signup-event/live-session linking | Exact original accolade formulas and visual styling; sortable detail tables, inline scores/classes/exclusions, row removal and top-class/award summaries are implemented |
-| Analytics | Aggregate K/D, eligible-war attendance, timeline, class composition/performance, normalized comparison radar, heatmap, retention, awards | Exact undocumented award formulas and remaining chart drill-down interactions; interactive class bubbles, specialization tooltips, K/D timelines and per-player overlays are implemented |
-| Personal statistics | Linked-member dossier, recent wars, trends, attendance, opponent matchup totals, trophy case | Exact original assessment and digest rules; local weekly roundup and trend assessment are implemented |
-| Coaching | Private flags, KDR war window, attendance/miss/no-show thresholds, grace/vacation exemptions, leads/capacity, assignments, resolution cooldown | Live notification role ping formatting; independent all/wars/days/previous-month windows and lead notification previews are implemented |
-| Signups | Create/edit, team capacities and per-team waitlists, drag/drop, withdrawals and promotion, lock/archive, presets, timezone-aware recurrence, event-card/missing-response previews; archival waitlist pity points | Live Discord button verification and exact original subteam layout. Native button payloads, grouped teams, custom card images/accent, automatic recurrence and protected ally links are implemented |
-| Alliances | Two to four guild invitations, unanimous activation, rejection/cancellation, leave, read-only shared-war totals | Invite notification and rejection acknowledgment UI; allied roster/history/events and exception-inclusive totals are implemented |
-| Gear | Reviewed labeled-image extraction, AP/AAP/DP, history, delete-current, local member ranking and manually reviewed rival guild snapshots | Live rival tracking and daily refresh, game-screen-specific crop profiles |
-| Live analysis | Sessions, ingest, duplicate IDs, chronological feed, replay-scoped one-minute chart and totals, per-guild filtering, opponent player/class tables, stop/save, war link, public recap/revoke, enemy profiles, manual character/family resolution, visible backoff fixture | Automatic BDO class discovery queue, true push transport and exact private debrief layout |
-| Capture / IKUSA | Browser JSON event-file import, incremental JSONL tail with rotation/partial-line handling, desktop file-adapter companion, independent IKUSA text parser, midnight rollover | Configurable native TCP/PCAP decoding and source-release checksum updater are implemented. Historical public calibration is tested with synthetic packets; current-patch calibration, real logs, Windows Npcap installation and packaged executable updates remain unverified or incomplete |
-| Streams | Twitch linking, fixture directory, viewer/category display, batched partner lookup, exact category filter, viewer ordering, on-demand embedded player/carousel, live API refresh adapter | Automatic authenticated refresh/backoff testing |
-| Scheduled operations | Timezone-aware weekly/sync schedule, idempotent run records, lookback catchup, reminder processing and milestone previews | Continuous scheduler and verified regional roster-source adapters are implemented, including Docker jobs profile. Live scheduled source validation remains outstanding |
-| Community | Tickets/replies/close, ticket categories, application forms/submit/review, welcome message and local role assignment, reminders | Live ticket-channel/welcome-role verification and further notification routing. Native welcome role buttons and self-service selection are implemented. Private ticket-channel plans/CLI adapter and applicant-scoped views are implemented |
-| Fun / AI | Roll, two-player challenge acceptance, persistent enhancement minigame; optional Ollama summary/roast adapter with explicit offline fallback | Live model testing and exact original minigame rules |
-| Configuration | Local access controls, channels, schedule forms, generic settings API for roles/overrides/recruitment/tickets, audit history, confirmed stats purge, adoption-key flow | Full settings UI for each nested value and live permission override semantics; confirmed guild disband is implemented |
-| Discord | 53 command names build locally; local command dispatcher; optional gateway/OAuth/send-update adapters; no external messages sent | End-to-end Discord tests, native command argument forms and interactive cards, complete command-by-command behavioral parity |
+| Identity | Discord-only production login, verified first-run setup, role refresh, expiring recovery, session/rate-limit controls | Staging OAuth, role changes and bot install |
+| Roster and guilds | Independent guild access, family links, groups, vacations, private notes, exceptions, merge, allied shared summaries | Representative regional roster imports and guild acceptance |
+| Wars | CSV/OCR score review and correction, event/session relationships, operational checklist, export and correction history | Real screenshots and a complete officer/member war workflow |
+| Capture | JSONL/IKUSA ingestion, calibrated synthetic PCAP, expiring scoped handoff, retained-log retry/deduplication and last-seen diagnostics | Current-patch calibration, real traffic and prolonged capture |
+| Events and coaching | Capacity/waitlists, recurrence, signup cards, locks/archive, attendance reconciliation, private mentoring | Real Discord buttons, restarts and permission failures |
+| Community and roles | Structured recruitment, private tickets with reopen/transcripts, welcome role hierarchy checks and optional selection replacement | Actual channel overwrites, ticket recovery and role hierarchy |
+| Discord delivery | Native typed command catalog, persistent components, durable outbox claims, backoff and remote reconciliation | Staging acceptance; ambiguous outcomes require operator inspection |
+| Settings and UX | Validated nested forms, integration/heartbeat status, all-section empty states, mobile/keyboard and automated accessibility checks | Spoken screen-reader review and user acceptance |
+| Operations | SQLite/PostgreSQL snapshots, validated restore, backup scheduling, preflight, diagnostics, maintenance, retention and privacy controls | Target Linux shutdown/restart, TLS, off-host backup and restore rehearsal |
+| Optional providers | Twitch adapter and configurable Ollama, with explicit per-guild switches | Real provider credentials/connectivity and output acceptance |
 
-## Interpretation
+## Validation
 
-All major product areas have a usable local workflow or a clearly labeled adapter/simulator. This is **not yet a working prototype of every individual documented behavior**: the rightmost column is remaining work, not silently accepted scope reduction. Current-patch game capture and private dashboard behavior cannot be verified from the currently available data.
+The release gate runs Django checks/tests with the unchanged 100% statement and
+branch coverage threshold, command registration, real Tesseract synthetic
+fixtures, packet fixtures, JavaScript syntax, Compose configuration and Chromium
+workflows. Test counts are emitted by the runner rather than copied as a stale
+baseline here. PostgreSQL native restore/concurrency checks require a separate
+test server. Coverage excludes test code and generated migrations, and does not
+measure JavaScript or the desktop Tk interface.
 
-## Validation evidence
+Chromium checks cover 12 dashboard sections, first-run setup, every catalog action
+dialog, failed-save recovery, keyboard focus and narrow layouts. Automated axe
+checks inspect WCAG A/AA rules, including labels and contrast. Accessibility-tree
+checks establish semantics, not the experience of a person using a screen reader.
+The independent browser smoke script covers the complete war lifecycle.
 
-- Django domain/API tests exercise transactions, permissions, attendance, waitlists, alliances, reminders, OCR parsing, OAuth-state rejection, role mapping and event-file handling.
-- Chromium smoke checks cover all 12 dashboard sections, member creation/search, war entry, event creation, gear entry, browser IKUSA parsing and responsive layout with no JavaScript errors.
-- A single browser-driven war lifecycle verifies signup, live ingest, reviewed score finalization, event/session linking, attendance reconciliation and analytics propagation in sequence.
-- Real Tesseract invocation recognizes the generated two-panel fixture. A narrow/ambiguous numeric row is rejected by the parser.
-- `runbot --check` constructs all 53 commands without opening a Discord connection.
-- No live Discord, Twitch, BDO account, real packet capture or real war screenshot validation has been performed.
-
-## Test coverage
-
-Run `python -m coverage run manage.py test`, then `python -m coverage report` or `python -m coverage html`. Coverage excludes test code and generated migrations; uncovered application branches remain visible. Full coverage is an active goal, not a claim. Remote API tests use mocks; synthetic packet and browser tests do not establish upstream feature parity.
-
-The latest baseline is 119 passing Python tests with 100% statement and branch coverage for `guilds` and `config`, including management commands. `.coveragerc` enforces that threshold. This does not include JavaScript coverage, desktop Tk UI coverage, or live external-service validation. Recruitment now preserves structured questions/answers and exposes each applicant's own submissions; closed tickets reject further replies.
+All OCR/packet fixtures are synthetic. No live Discord, Twitch, BDO capture, real
+war screenshot, target-host rehearsal or officer acceptance is claimed by these
+offline tests. See the unchecked tasks for the exact remaining launch work.

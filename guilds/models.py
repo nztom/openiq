@@ -44,3 +44,13 @@ class Outbox(models.Model):
     text = models.TextField()
     status = models.CharField(max_length=15, default='preview')
     created = models.DateTimeField(auto_now_add=True)
+    attempts = models.PositiveIntegerField(default=0)
+    retry_at = models.DateTimeField(null=True, blank=True)
+    lease_until = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=200, blank=True)
+
+
+class RequestLimit(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    count = models.PositiveIntegerField(default=0)
+    expires = models.PositiveBigIntegerField(db_index=True)

@@ -1,4 +1,24 @@
 name: openiq
+x-runtime: &runtime
+  SECRET_KEY: "${SECRET_KEY:-}"
+  OPENIQ_DATA_DIR: /data
+  OPENIQ_VERSION: "${OPENIQ_VERSION:-development}"
+  REQUIRED_PROCESSES: "${REQUIRED_PROCESSES:-}"
+  SESSION_MAX_AGE: "${SESSION_MAX_AGE:-28800}"
+  REQUEST_LIMITS_ENABLED: "${REQUEST_LIMITS_ENABLED:-1}"
+  RATE_LIMIT_OAUTH: "${RATE_LIMIT_OAUTH:-20}"
+  RATE_LIMIT_ADMIN_LOGIN: "${RATE_LIMIT_ADMIN_LOGIN:-5}"
+  RATE_LIMIT_RECOVERY: "${RATE_LIMIT_RECOVERY:-5}"
+  RATE_LIMIT_OCR: "${RATE_LIMIT_OCR:-10}"
+  RATE_LIMIT_MUTATION: "${RATE_LIMIT_MUTATION:-240}"
+  HSTS_SECONDS: "${HSTS_SECONDS:-3600}"
+  HSTS_INCLUDE_SUBDOMAINS: "${HSTS_INCLUDE_SUBDOMAINS:-0}"
+  HSTS_PRELOAD: "${HSTS_PRELOAD:-0}"
+  DEBUG: "${DEBUG:-0}"
+  ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1}"
+  HTTPS: "${HTTPS:-1}"
+  TRUST_PROXY: "${TRUST_PROXY:-0}"
+  CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
 x-database: &database
   DATABASE_BACKEND: "${DATABASE_BACKEND:-sqlite}"
   DATABASE_PATH: "${DATABASE_PATH:-/data/db.sqlite3}"
@@ -15,15 +35,15 @@ services:
     ports:
       - "${OPENIQ_BIND:-127.0.0.1}:${OPENIQ_PORT:-8765}:8000"
     environment:
-      <<: *database
-      DEBUG: "0"
+      <<: [*database, *runtime]
+      OPENIQ_SERVICE: web
       ALLOW_LOCAL_LOGIN: "${ALLOW_LOCAL_LOGIN:-0}"
-      HTTPS: "${HTTPS:-0}"
+      HTTPS: "${HTTPS:-1}"
       ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
       TRUST_PROXY: "${TRUST_PROXY:-0}"
-      SEED_DEMO: "${SEED_DEMO:-1}"
-      DEMO_PASSWORD: "${DEMO_PASSWORD:-prototype-local-2026}"
+      SEED_DEMO: "${SEED_DEMO:-0}"
+      DEMO_PASSWORD: "${DEMO_PASSWORD:-}"
       RUN_BACKEND_ADMIN_SETUP: "1"
       ENABLE_BACKEND_ADMIN: "${ENABLE_BACKEND_ADMIN:-1}"
       BACKEND_ADMIN_USERNAME: "${BACKEND_ADMIN_USERNAME:-openiq-admin}"
@@ -32,6 +52,10 @@ services:
       DISCORD_REDIRECT_URI: "${DISCORD_REDIRECT_URI:-http://127.0.0.1:8765/auth/discord/callback/}"
       DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN:-}"
       ENABLE_DISCORD_DELIVERY: "${ENABLE_DISCORD_DELIVERY:-0}"
+      TWITCH_CLIENT_ID: "${TWITCH_CLIENT_ID:-}"
+      TWITCH_ACCESS_TOKEN: "${TWITCH_ACCESS_TOKEN:-}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-}"
+      OLLAMA_URL: "${OLLAMA_URL:-http://127.0.0.1:11434}"
     volumes:
       - openiq-data:/data
     restart: unless-stopped
@@ -40,7 +64,8 @@ services:
     profiles: [jobs]
     command: [python, manage.py, scheduler]
     environment:
-      <<: *database
+      <<: [*database, *runtime]
+      OPENIQ_SERVICE: scheduler
       RUN_MIGRATIONS: "0"
       SEED_DEMO: "0"
       RUN_BACKEND_ADMIN_SETUP: "0"
@@ -54,12 +79,37 @@ services:
     healthcheck:
       disable: true
     restart: unless-stopped
+  backup:
+    image: openiq:local
+    profiles: [backups]
+    command: [python, manage.py, backup_scheduler, --output, /backups, --interval, "${BACKUP_INTERVAL:-86400}", --keep, "${BACKUP_KEEP:-7}", --timeout, "${BACKUP_TIMEOUT:-120}"]
+    environment:
+      <<: [*database, *runtime]
+      OPENIQ_SERVICE: backup
+      RUN_MIGRATIONS: "0"
+      SEED_DEMO: "0"
+      RUN_BACKEND_ADMIN_SETUP: "0"
+    volumes:
+      - openiq-data:/data
+      - type: bind
+        source: "${BACKUP_DIRECTORY:-./backups}"
+        target: /backups
+        bind:
+          create_host_path: false
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    stop_grace_period: 150s
+    restart: unless-stopped
   bot:
     image: openiq:local
     profiles: [discord]
     command: [python, manage.py, runbot]
     environment:
-      <<: *database
+      <<: [*database, *runtime]
+      OPENIQ_SERVICE: bot
       RUN_MIGRATIONS: "0"
       SEED_DEMO: "0"
       RUN_BACKEND_ADMIN_SETUP: "0"

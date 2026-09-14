@@ -1,2 +1,2 @@
-from . import roster,wars,events,gear,coaching,alliances,live,community,integrations,adminops,commands,operations,intelligence,ai
-MODULES={'roster':roster,'wars':wars,'events':events,'gear':gear,'coaching':coaching,'alliances':alliances,'live':live,'community':community,'integrations':integrations,'admin':adminops,'commands':commands,'operations':operations,'intelligence':intelligence,'ai':ai}
+from . import roster,wars,events,gear,coaching,alliances,live,community,integrations,adminops,commands,operations,intelligence,ai,privacy
+MODULES={'roster':roster,'wars':wars,'events':events,'gear':gear,'coaching':coaching,'alliances':alliances,'live':live,'community':community,'integrations':integrations,'admin':adminops,'commands':commands,'operations':operations,'intelligence':intelligence,'ai':ai,'privacy':privacy}

@@ -9,7 +9,14 @@ def handle(g,action,p,role,user):
     if action=='settings':
         config=p.get('config')
         if not isinstance(config,dict): raise Invalid('Configuration must be an object')
-        allowed={'channels','roles','command_permissions','weekly','sync','welcome','tickets','recruitment','milestones','alliance_mode','embed_color'}
+        allowed={'channels','roles','command_permissions','weekly','sync','welcome','tickets','recruitment','milestones','alliance_mode','embed_color','retention','capture','integrations'}
+        from guilds.settings_validation import validate
+        validate(config,g.server_id)
+        if 'retention' in config:
+            retention=config['retention']
+            if not isinstance(retention,dict) or set(retention)-{'capture_days','import_days','recap_days','summary_days'}:raise Invalid('Unknown retention setting')
+            for key,value in retention.items():
+                if isinstance(value,bool) or not isinstance(value,int) or not 0<=value<=36500:raise Invalid('Retention days must be integers from 0 to 36500')
         if set(config)-allowed: raise Invalid('Unknown setting: '+', '.join(set(config)-allowed))
         g.config.update(config); g.save(); return g.config
     if action=='access':

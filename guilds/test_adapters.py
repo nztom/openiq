@@ -134,7 +134,7 @@ class AdapterTests(TestCase):
         session=self.client.session;session['discord_tokens']={'access':'old','refresh':'refresh','expires':0};session['discord_checked']=0;session.save()
         response=Mock();response.json.return_value={'access_token':'new','expires_in':3600}
         with patch('httpx.post',return_value=response),patch('guilds.discord_auth.synchronize',return_value=[]) as sync:
-            self.assertEqual(self.client.get('/').status_code,200);sync.assert_called_once_with(user,'new')
+            self.assertRedirects(self.client.get('/'),'/onboard/',fetch_redirect_response=False);sync.assert_called_once_with(user,'new')
         self.assertEqual(self.client.session['discord_tokens']['access'],'new')
     def test_expired_token_without_refresh_logs_out(self):
         user=User.objects.create_user('discord_expired');self.client.force_login(user)
@@ -148,4 +148,6 @@ class AdapterTests(TestCase):
     def test_ocr_headers_and_image_pixel_limit(self):
         from .modules.integrations import paired_scores
         self.assertEqual(paired_scores(['Names\nAlpha','Kills Deaths\n\n10 2'])[0]['kills'],10)
-        with patch('PIL.Image.open',return_value=Mock(width=5000,height=5000)),self.assertRaises(Invalid):ocr(b'image')
+        from unittest.mock import MagicMock
+        image=MagicMock(width=5000,height=5000,format='PNG');image.__enter__.return_value=image
+        with patch('PIL.Image.open',return_value=image),self.assertRaises(Invalid):ocr(b'image')

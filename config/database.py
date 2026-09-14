@@ -1,6 +1,9 @@
 """Database-specific configuration and operations; domain queries use Django ORM."""
 import sqlite3
 import time
+import os
+import shutil
+import subprocess
 from contextlib import closing
 from pathlib import Path
 
@@ -55,8 +58,27 @@ class SQLiteBackend(DatabaseBackend):
 
 
 class PostgreSQLBackend(DatabaseBackend):
-    """Connection configuration only; driver, integration tests and backup come later."""
+    """Native PostgreSQL snapshots and transactional restore via its client tools."""
     engine = 'django.db.backends.postgresql'
+    snapshot_name = 'database.dump'
+
+    def validate_snapshot(self,database):
+        if not shutil.which('pg_dump'):raise DatabaseOperationError('Install pg_dump on PATH to back up PostgreSQL')
+
+    def _run(self,tool,database,arguments,timeout):
+        environment=os.environ.copy()
+        environment.update(PGPASSWORD=database.get('PASSWORD',''),PGSSLMODE=database.get('OPTIONS',{}).get('sslmode','prefer'))
+        command=[tool,'--no-password','--host',database.get('HOST') or 'localhost','--port',str(database.get('PORT') or 5432),
+                 '--username',database['USER'],'--dbname',database['NAME'],*arguments]
+        try:subprocess.run(command,env=environment,timeout=timeout,check=True,capture_output=True)
+        except (OSError,subprocess.SubprocessError):raise DatabaseOperationError('PostgreSQL maintenance failed; verify client version, connection, privileges and timeout') from None
+
+    def snapshot(self,database,destination,timeout):
+        self.validate_snapshot(database)
+        self._run('pg_dump',database,['--format=custom','--file',str(destination)],timeout)
+
+    def restore(self,database,source,timeout):
+        self._run('pg_restore',database,['--single-transaction','--exit-on-error','--clean','--if-exists','--no-owner','--no-privileges',str(source)],timeout)
 
     def configuration(self, data_dir, env):
         if not env.get('DATABASE_NAME') or not env.get('DATABASE_USER'):

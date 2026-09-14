@@ -1,7 +1,9 @@
 """Exercise real browser workflows in an isolated, disposable local guild."""
 import os,uuid
+from pathlib import Path
 from playwright.sync_api import sync_playwright
 base=os.getenv('OPENIQ_URL','http://127.0.0.1:8765')
+artifacts=Path(os.getenv('OPENIQ_BROWSER_ARTIFACTS','docs'));artifacts.mkdir(parents=True,exist_ok=True)
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
     page=browser.new_page(viewport={'width':1440,'height':1000})
@@ -15,8 +17,8 @@ with sync_playwright() as p:
         assert not page.locator('#error').is_visible()
     page.locator('nav').get_by_role('button',name='Members',exact=True).click()
     assert page.title()=='OpenIQ'
-    page.screenshot(path='docs/dashboard.png',full_page=True)
-    page.set_viewport_size({'width':390,'height':844});page.screenshot(path='docs/mobile.png',full_page=True)
+    page.screenshot(path=str(artifacts/'dashboard.png'),full_page=True)
+    page.set_viewport_size({'width':390,'height':844});page.screenshot(path=str(artifacts/'mobile.png'),full_page=True)
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),'Mobile overflow'
     page.set_viewport_size({'width':1440,'height':1000})
     test_guild='UITest-'+uuid.uuid4().hex[:8]

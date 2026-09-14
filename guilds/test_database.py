@@ -1,6 +1,7 @@
 import io
 import json
 import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -29,7 +30,7 @@ class ExampleBackend(DatabaseBackend):
 class DatabaseBackendTests(SimpleTestCase):
     def test_sqlite_defaults_and_legacy_path(self):
         settings = database_configuration(Path('/data'), {})
-        self.assertEqual(settings, {'ENGINE': 'django.db.backends.sqlite3', 'NAME': '/data/db.sqlite3',
+        self.assertEqual(settings, {'ENGINE': 'django.db.backends.sqlite3', 'NAME': str(Path('/data')/'db.sqlite3'),
                                     'OPTIONS': {'timeout': 20, 'transaction_mode': 'IMMEDIATE'}})
         self.assertEqual(database_configuration('/data', {'DATABASE_PATH': '/other/db.sqlite3'})['NAME'], '/other/db.sqlite3')
         self.assertIsInstance(backend_for_database(settings), SQLiteBackend)
@@ -46,7 +47,7 @@ class DatabaseBackendTests(SimpleTestCase):
         with self.assertRaises(ImproperlyConfigured):database_configuration('/data', {'DATABASE_BACKEND':'postgres'})
         with tempfile.TemporaryDirectory() as temporary, override_settings(DATABASES={'default':config}, DATABASE_BACKEND='postgresql'):
             output = Path(temporary) / 'backup'
-            with self.assertRaisesMessage(CommandError, 'not implemented'):call_command('backup', output=output)
+            with patch('config.database.shutil.which',return_value=None),self.assertRaisesMessage(CommandError, 'pg_dump'):call_command('backup', output=output)
             self.assertFalse(output.exists())
 
     def test_adapter_extension_and_unsupported_configuration(self):

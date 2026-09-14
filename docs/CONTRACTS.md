@@ -1,4 +1,4 @@
-# Independent prototype contracts
+# Application contracts
 
 Guild recovery requires a signed-in Discord user, an unexpired single-use adoption
 key, and a fresh Discord API check confirming owner, Administrator, or Manage Guild
@@ -18,20 +18,31 @@ with `guild`, `server_id`, and `key` and the session's CSRF token. The older dir
 - Improvement compares the last and first included single-war K/D using a denominator floor of one. Consistency uses the population standard deviation of those ratios. Award definitions differ from a possible upstream implementation.
 - Event waitlists use signup time within the selected team. Withdrawing promotes the earliest remaining signup. Moves enter the target team's queue at the current time. Repeating a manually requested event preserves wall-clock time in its configured timezone.
 - Archiving an event adds one pity point to each waitlisted member, once per event. Three points can be treated as a prototype token; automatic token-based prioritization is not implemented.
-- Scheduled jobs write a unique job record per schedule/date. Notification output stays in the outbox. The `scheduler` management command or optional Compose jobs profile runs jobs continuously; individual `tick` calls remain available.
+- Scheduled jobs write a unique job record per schedule/date. Notification output enters the outbox; enabled delivery drains it with durable claims, retries and remote-message reconciliation. The `scheduler` management command or optional Compose jobs profile runs jobs continuously; individual `tick` calls remain available.
 
 ## API
 
-Authenticated session and CSRF token are required for mutations:
+Browser mutations require an authenticated session and CSRF token. The capture handoff uses a separate session-scoped expiring bearer credential:
 
 ```text
 GET  /api/<guild_id>/state/
 POST /api/<guild_id>/<module>/<action>/
 POST /ocr/<guild_id>/
+GET  /onboard/
 POST /onboard/
+POST /capture/<guild_id>/<session_id>/  (scoped bearer credential, not a browser session)
 ```
 
 JSON mutation responses contain `{ "ok": true, "result": ... }`. Domain validation returns HTTP 400; denied access returns HTTP 403. Modules validate cross-guild record references. The service wraps mutation, revision increment and audit entry in one database transaction.
+
+External AI/Twitch/roster preparation runs before that transaction. The service
+rechecks access, role, guild revision and configuration before accepting its
+result; a concurrent change returns a retryable validation error rather than
+overwriting newer state. Welcome-role HTTP calls also run outside the component
+transaction. Successful member responses omit private `notes` fields even when
+the underlying action returns a full member record. War saves/deletions generate
+targeted correction history inside the mutation transaction; privacy scrubbing
+does not recreate removed data in new history entries.
 
 ## Normalized event file
 
@@ -62,7 +73,7 @@ Discord OAuth follows the [authorization code flow](https://docs.discord.com/dev
 
 Twitch uses its [streams API](https://dev.twitch.tv/docs/api/reference/#get-streams). Partner flags in fixture data are fixture metadata; the live adapter does not infer partner status.
 
-Notification delivery is opt-in and separate from preview generation. HTTP retries around a successful remote post followed by a local persistence failure may duplicate a message; a production queue needs durable delivery reconciliation.
+Notification delivery is opt-in and separate from preview generation. Durable claims, message markers and pending remote-operation records reconcile retries after local persistence failure. Missing ambiguous remote outcomes fail closed for operator inspection; unconditional exactly-once delivery is not guaranteed. Live Discord behavior remains an installation acceptance check.
 
 
 ## Packet calibration and capture

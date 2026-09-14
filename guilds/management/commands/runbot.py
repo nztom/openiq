@@ -1,5 +1,5 @@
 """Optional Discord transport. Not started by demo setup or web server."""
-import json,os
+import json,os,asyncio
 import discord
 from discord import app_commands
 from asgiref.sync import sync_to_async
@@ -30,7 +30,22 @@ class Command(BaseCommand):
         output=self.stdout
         class Bot(discord.Client):
             def __init__(self):super().__init__(intents=intents);self.tree=app_commands.CommandTree(self)
+            async def write_heartbeat(self):
+                from guilds.health import heartbeat
+                try:
+                    while True:
+                        await sync_to_async(heartbeat)('bot',self.is_ready())
+                        await asyncio.sleep(30)
+                finally:await sync_to_async(heartbeat)('bot',False)
+            async def close(self):
+                task=getattr(self,'heartbeat_task',None)
+                if task:
+                    task.cancel()
+                    try:await task
+                    except asyncio.CancelledError:pass
+                await super().close()
             async def setup_hook(self):
+                self.heartbeat_task=asyncio.create_task(self.write_heartbeat())
                 if not sync_global and sync_guild is None:return
                 scope=f'server {sync_guild}' if sync_guild is not None else 'global'
                 try:

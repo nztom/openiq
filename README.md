@@ -2,18 +2,22 @@
 
 **OpenIQ is unapologetically developed entirely with AI, with minimal human oversight.**
 
-A local guild-management prototype for Black Desert guilds. Django + SQLite power independent domain modules; the browser UI uses HTML/CSS/JavaScript.
+A self-hosted guild-management application for Black Desert guilds. Django with SQLite or PostgreSQL powers independent domain modules; the browser UI uses HTML/CSS/JavaScript.
 
-**Status:** working local platform with fixtures, reviewed imports and optional external adapters. A calibrated TCP/PCAP decoder is implemented and tested with synthetic captures; its historical calibration is not verified against the current BDO patch. Discord/Twitch adapters require credentials and have not been exercised against live accounts. See [feature status](docs/FEATURES.md) for the precise boundaries.
+**Status:** locally validated platform with fixtures, reviewed imports and optional external adapters. A calibrated TCP/PCAP decoder is implemented and tested with synthetic captures; its historical calibration is not verified against the current BDO patch. Discord/Twitch adapters require credentials and have not been exercised against live accounts. See the [feature state](tasks/FEATURE_STATE.md) and [task register](tasks/README.md) for precise boundaries and planned work.
+
+See the [production runbook](docs/RUNBOOK.md) for Discord application setup, first-run onboarding and daily operations.
 
 ## Run with Docker
 
 ```bash
 cd /home/user/src/openiq
+cp .env.example .env
+# Configure Discord OAuth, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS and your TLS proxy.
 docker compose up --build -d
 ```
 
-Open **http://127.0.0.1:8765/** and sign in through Discord. Normal member
+Open your configured **HTTPS address** and sign in through Discord. Normal member
 login is Discord-only. The `openiq-data` named volume persists the database and
 signing key across container replacement. Existing host data is not copied into
 the image or container.
@@ -23,7 +27,7 @@ the image or container.
 docker compose ps
 docker compose logs --tail=100 web
 
-# Enable the optional continuous scheduler (notifications remain previews).
+# Enable the optional continuous scheduler (delivery follows its explicit switch).
 docker compose --profile jobs up -d
 
 # Start the Discord bot after setting its token and enabling delivery in .env.
@@ -38,18 +42,19 @@ For Docker without Compose:
 ```bash
 docker build -t openiq:local .
 docker run -d --name openiq -p 127.0.0.1:8765:8000 \
-  -v openiq-data:/data -e SEED_DEMO=1 openiq:local
+  -v openiq-data:/data --env-file .env openiq:local
 ```
 
 The application runs as UID 10001, includes Tesseract and uses Gunicorn/WhiteNoise to serve the app and static assets. It does not require a host Python installation. `.dockerignore` excludes the host database, signing key, environment files, Git metadata, virtual environment and screenshots.
 
 Copy `.env.example` to `.env` to customize the deployment. Set the Discord OAuth
 variables before normal use. `ALLOW_LOCAL_LOGIN=1` exposes the password form for
-development fixtures only; leave it disabled for a guild installation. `HTTPS=1`
+development fixtures only (also set `DEBUG=1`, `HTTPS=0`, and an explicit demo
+password if enabling `SEED_DEMO=1`); leave it disabled for a guild installation. `HTTPS=1`
 enables secure cookies and HTTPS redirects when deployed behind TLS; set
 `TRUST_PROXY=1` only for a trusted reverse proxy that controls forwarded headers.
 
-Compose enables one break-glass Django backend account by default. Each web-container start creates or rotates its random password and prints the new `/admin/` credential to `docker compose logs web`; the scheduler never rotates it. Set `ENABLE_BACKEND_ADMIN=0` to disable that managed account on the next web start, or change its stable username with `BACKEND_ADMIN_USERNAME`. This account is for backend recovery and inspection, not normal guild membership.
+Compose enables one break-glass Django backend account by default. Each web-container start creates or rotates its random password and writes the `/admin/` credential to `/data/.backend-admin.json` with mode 0600; startup logs contain only the file path. Retrieve it through private operator access with `docker compose exec web cat /data/.backend-admin.json`. The scheduler never rotates it. Set `ENABLE_BACKEND_ADMIN=0` to disable the account and remove that file on the next web start, or change its stable username with `BACKEND_ADMIN_USERNAME`. This account is for backend recovery and inspection, not normal guild membership.
 
 The Docker container hosts the platform. The desktop/live-interface capture process remains on the game host; offline PCAP parsing can also run in the image. No privileged container or host-network mode is required for the dashboard.
 
@@ -83,7 +88,7 @@ Set `DEMO_PASSWORD` before the first seed to choose a different demo password. S
 5. **Gear:** update gear and inspect history; deletion clears the current display without losing history. Add reviewed rival snapshots for guild rankings.
 6. **Live War:** start a session, generate a synthetic fight, import `fixtures/combat.jsonl`, or paste `fixtures/ikusa.log` into Import IKUSA text log with the date/timezone. Save, replay, link a war and enable/revoke a public recap.
 7. **Alliance:** as `demo`, invite Silver Meridian, switch guild and accept. Only explicitly shared wars contribute.
-8. **Community:** open/reply/close tickets; apply/review recruitment; generate welcomes, reminders, summaries, rolls and the enhancement minigame. All notifications appear as local previews.
+8. **Community:** open/reply/close tickets; apply/review recruitment; generate welcomes, reminders, summaries, rolls and the enhancement minigame. Notifications stay as previews until explicit delivery is enabled.
 9. **Settings:** configure roles, channels, schedules, create ticket categories and application forms, run scheduled work, and inspect the audit trail.
 
 Real OCR uses the system `tesseract` executable (`sudo apt install tesseract-ocr` if absent). Upload cropped names/stat panels in alternating pairs. Misaligned or ambiguous results require correction; they never silently finalize a war. Gear OCR recognizes labeled AP/AAP/DP text and always requires review. The checked-in dark score panels are deterministic synthetic BDO-style regression inputs, not authentic game screenshots; regenerate them with `scripts/generate_ocr_fixtures.py`.
@@ -99,21 +104,24 @@ Each module exposes `handle(guild, action, payload, role, user)` and uses shared
 - `integrations.py`, `logformat.py`, `guilds/capture.py`: OCR, roster HTML, Twitch and event-file adapters.
 - `commands.py`, `discord_auth.py`, `delivery.py`: local command routing, optional OAuth and explicit notification delivery.
 
-Records have a relational guild/kind/key envelope, unique constraints and module-owned JSON payloads. Mutations acquire the database writer lock before reading mutable state and audit successful actions in the same transaction. This favors a small extensible prototype; a larger deployment should use typed relational domain models, schema-versioned payloads and PostgreSQL.
+Records have a relational guild/kind/key envelope, unique constraints and module-owned JSON payloads. External AI, Twitch and roster reads are prepared before acquiring the writer lock; access, role, guild revision and configuration are checked again before committing their results. Local mutations and audit entries share a short transaction. War correction history records changed rows rather than scanning every war around unrelated actions. This targets small guild installations; PostgreSQL has native snapshot/restore and concurrency integration tests. Larger deployments still need workload-specific validation.
 
 ## Optional integrations and tools
 
 No Discord messages have been sent. No bot has been connected.
 
 ```bash
-# All 53 documented commands are constructed without a network connection.
+# All registered commands are constructed without a network connection.
 .venv/bin/python manage.py runbot --check
+
+# Read-only remote checks; requires the bot token but sends no messages.
+.venv/bin/python manage.py bot_diagnostics --guild 1
 
 # Exercise commands locally.
 .venv/bin/python manage.py local_command guildstats --guild 1 --user demo
 .venv/bin/python manage.py local_command 'reminder list' --guild 1 --user member
 
-# Process scheduled jobs once; output remains in the preview queue.
+# Process scheduled jobs once; sends only with ENABLE_DISCORD_DELIVERY=1.
 .venv/bin/python manage.py tick
 
 # Tail a normalized event log into an existing live session.
@@ -147,18 +155,52 @@ Twitch uses `TWITCH_CLIENT_ID` and `TWITCH_ACCESS_TOKEN`; without them the demo 
 
 ## Verification
 
+Install `requirements-dev.txt`, Tesseract, Node, Chromium (`python -m playwright install chromium`) and the pinned accessibility tool (`npm ci`). Run the complete offline gate with `python scripts/release_gate.py`; it uses disposable data and emits `release-report.json`. Docker Compose is required for configuration validation (a standalone executable can be supplied with `--compose PATH`). Live-host checks remain separate.
+
+Individual checks:
+
 ```bash
 .venv/bin/python manage.py test
 .venv/bin/python manage.py check
 .venv/bin/python manage.py runbot --check
 .venv/bin/python scripts/verify_ocr.py
+.venv/bin/python manage.py verify_imports --output import-report.json
 .venv/bin/python scripts/verify_packets.py
 node --check static/app.js
 ```
 
-Browser checks use optional `playwright` (`pip install -r requirements-dev.txt`, then `playwright install chromium`). With the server running, execute `scripts/browser_smoke.py`. The script uses the default Playwright browser location; set `PLAYWRIGHT_BROWSERS_PATH` if you installed browsers elsewhere. Screenshots are in `docs/dashboard.png` and `docs/mobile.png`.
+Browser checks use optional `playwright` (`pip install -r requirements-dev.txt`, then `playwright install chromium`). With the server running, execute `scripts/browser_smoke.py`. The script uses the default Playwright browser location; set `PLAYWRIGHT_BROWSERS_PATH` if you installed browsers elsewhere. Screenshots are in `docs/dashboard.png` and `docs/mobile.png`. Install the pinned accessibility engine with `npm ci`; opt-in dashboard/onboarding checks run with `OPENIQ_BROWSER_TEST=1 python manage.py test guilds.test_ux_browser guilds.test_onboarding_browser`.
 
 ## Configuration and data
+
+Operator maintenance uses `python manage.py maintain OPERATION --guild ID --actor OWNER`.
+Operations are `export` (`--output private.json`), `remove_user` (`--username USER`),
+`relink_discord` (`--username USER --member MEMBER_ID --discord-id ID`),
+`delete_guild` (`--confirmation GUILD_NAME`), and `cleanup` (`--days 90`). Mutations
+preview by default and require `--apply`. Removing guild access preserves other
+guild memberships; the local account is removed only when no memberships remain
+and it is not a backend administrator. Cleanup removes expired capture/adoption
+credentials and old audit/completed outbox records, preserving finalized wars
+and their correction history. Exports are private and exclude credentials.
+
+`/healthz/` checks web-process liveness. `/readyz/` and `python manage.py diagnostics`
+check database access, migrations, writable storage and optional process heartbeats.
+Set `REQUIRED_PROCESSES=scheduler,bot` when those services are enabled; a heartbeat
+older than two minutes fails readiness. Set `OPENIQ_VERSION` to the deployed commit
+or release. Reports contain status flags rather than credentials or data paths.
+
+Owners can set `retention` through the settings API with `capture_days`,
+`import_days`, `recap_days`, and `summary_days` (0 disables expiry). Preview with
+`python manage.py retention --guild ID`; add `--apply` to clear expired server
+capture events/import rows, revoke public recaps and expire retained summaries.
+Age is measured from record creation. Live sessions and finalized wars are
+preserved. OCR upload images are processed in memory and not retained. Capture
+source files on separate machines require their own operator cleanup policy.
+
+Officers can choose **Export war package** in History to download the war,
+participant identities, linked records and correction history. The equivalent CLI
+is `python manage.py export_war --guild ID --war WAR_ID --user OFFICER --output war.json`.
+The output contains private guild data; the CLI refuses to overwrite an existing file.
 
 Database settings and maintenance operations use a pluggable backend layer;
 domain queries use Django ORM. SQLite remains the supported default. See
@@ -181,8 +223,10 @@ snapshot and retains the newest requested count. Directories use mode 0700 and
 files use 0600. Backups contain private guild data and credentials; store them in
 an operator-controlled location outside Git and copy them off the application
 disk. External Discord/Twitch secrets supplied through environment variables
-need separate operator backups. Automated restore and scheduled backups remain
-tracked in the readiness checklist.
+need separate operator backups. The optional Compose `backups` profile schedules
+snapshots to a host directory; see [backup operations and restore drill](docs/BACKUPS.md).
+The same guide documents the checked, staged `restore` command and its offline
+overwrite/recovery requirements.
 
 Research and independent behavior decisions: [investigation](docs/RESEARCH.md), [feature matrix](docs/FEATURES.md), [data contract](docs/CONTRACTS.md).
 
@@ -211,7 +255,7 @@ Optional AI text generation uses a local Ollama server when `OLLAMA_MODEL` is se
 
 ## Test coverage
 
-The Python application and management commands currently have **100% statement and branch coverage** across **119 tests**. Coverage excludes test files and generated migrations. The C tracer is selected explicitly because Python 3.14's default monitoring tracer reported false missing branches for compact exception paths.
+The release gate requires **100% statement and branch coverage** for the Python application and management commands. The gate report records the current test count and any skipped platform-specific tests. Coverage excludes test files and generated migrations. The C tracer is selected explicitly because Python 3.14's default monitoring tracer reported false missing branches for compact exception paths.
 
 ```bash
 python -m pip install -r requirements-dev.txt
@@ -239,7 +283,7 @@ The Community tab can preview a private ticket-channel plan. Configure `tickets.
 python manage.py ticket_channel TICKET_ID --guild GUILD_ID --user demo
 ```
 
-The command previews by default. Adding `--send` requires `ENABLE_DISCORD_DELIVERY=1` and `DISCORD_BOT_TOKEN`; it creates or updates a private channel, synchronizes transcript messages, and makes closed tickets read-only for their author. The bot needs the corresponding Discord channel/message permissions. Remote behavior is tested with mocks only. HTTP success followed by a local database failure can still require manual reconciliation.
+The command previews by default. Adding `--send` requires `ENABLE_DISCORD_DELIVERY=1` and `DISCORD_BOT_TOKEN`; it creates or updates a private channel, synchronizes transcript messages, and makes closed tickets read-only for their author. Officers can reopen tickets without losing replies, then synchronize again to restore sending permission. The bot needs the corresponding Discord channel/message permissions, including reading message history and embedding links. Remote behavior is tested with mocks only. Retry recovers uncertain channel creation using its topic marker and uncertain message creation using its delivery footer. If no matching remote object can be found, delivery stops for operator inspection rather than creating duplicates. Preserve those markers and run a single delivery worker per guild.
 
 
-Welcome cards support native Discord role buttons. Set `welcome.roles` to allowed labels (for example `["Raider", "Social"]`) and `welcome.role_ids` to the corresponding Discord role IDs. Preview a welcome card for a linked member, then use the existing opt-in outbox delivery command to post it. The bot processes button selections only for the intended member or an officer; local role selection remains available without Discord. Role-grant requests are idempotent, and HTTP failures do not mark the local role as granted.
+Welcome cards support native Discord role buttons. Set `welcome.roles` to allowed labels (for example `["Raider", "Social"]`) and `welcome.role_ids` to the corresponding Discord role IDs. Preview a welcome card for a linked member, then use the existing opt-in outbox delivery command to post it. The bot processes button selections only for the intended member or an officer; local role selection remains available without Discord. Remote updates require Manage Roles and unmanaged roles below the bot's highest role. Set `welcome.replace_selection=true` to remove earlier roles granted by OpenIQ when selecting a new role; unrelated Discord roles remain intact. Requests are idempotent, so retry after a partial failure to finish reconciliation. HTTP failures do not mark the local selection as successful.
