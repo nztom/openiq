@@ -12,6 +12,29 @@ Only one agent or contributor may own a task at a time. A task document should
 state its problem, scope, acceptance criteria, dependencies, and validation.
 Keep it concise and update it when newly discovered work changes its scope.
 
+## Planning and maintaining tasks
+
+Before proposing new work, update from `main`, read `FEATURE_STATE.md`, and
+search every task state for related work (for example,
+`rg -n -i 'keyword' tasks`). Read possible matches before creating anything.
+
+- Extend an existing task when the outcome, code area, and acceptance criteria
+  are materially the same. Do not create a second task for a different slice of
+  the same problem.
+- Create a new `todo/` document only when its outcome can be independently
+  claimed, implemented, tested, and completed. Split a broad effort into those
+  independently deliverable slices.
+- Every new task must state: priority, owner (`unassigned` initially), problem,
+  scoped outcome, explicit non-goals where useful, dependencies, acceptance
+  criteria, and validation. Validation for code changes must cover Linux and
+  Windows. Link related task IDs instead of copying their text.
+- Update a task when planning changes its scope, dependencies, or acceptance
+  criteria. Do not edit an `in-progress/` task owned by someone else; add a
+  separate coordination note or contact its owner instead.
+- Commit and push task-register-only planning changes so future agents plan from
+  the same current backlog. Update `FEATURE_STATE.md` when a task changes a
+  documented feature boundary.
+
 ## Starting a task
 
 1. Ensure the worktree is clean or that unrelated work is safely committed.
@@ -35,3 +58,11 @@ If work is paused, leave the document in `in-progress/` with a short handoff
 note rather than returning it to `todo/` silently. A maintainer may return it
 to `todo/` once the ownership claim has been cleared.
 
+## Cross-platform requirement
+
+All code fixes and features must be OS-agnostic and run on both Linux and
+Windows. Avoid shell-specific commands, hard-coded paths, Unix-only process
+behavior, permissions assumptions, and platform-specific dependencies in
+application code and tests. Validate each code task on both operating systems
+before completion; if a platform exposes a defect, keep the task in progress
+until it is fixed rather than documenting it away.
