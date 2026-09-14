@@ -1,7 +1,7 @@
 # Local release and image smoke validation
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -23,4 +23,3 @@ recorded clean-image and disposable Compose runtime validation.
 
 Run `python scripts/release_gate.py` and documented disposable Docker/Compose
 smoke checks. This task does not add a CI, branch-protection, or PR-review gate.
-
