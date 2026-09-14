@@ -105,12 +105,13 @@ with sync_playwright() as p:
         assert page.get_by_label('Stream category',exact=True).count()==1
         lifecycle=page.evaluate("""async()=>{
           const alpha=records('member').find(m=>m.name==='TestAlpha'),beta=records('member').find(m=>m.name==='TestBeta');
-          const event=await call('events','save',{title:'Lifecycle war',type:'Node',at:'2026-09-12T08:00:00Z',timezone:'Pacific/Auckland',teams:[{name:'Main',capacity:10}]});
+          const date=new Date().toISOString().slice(0,10);
+          const event=await call('events','save',{title:'Lifecycle war',type:'Node',at:`${date}T08:00:00Z`,timezone:'Pacific/Auckland',teams:[{name:'Main',capacity:10}]});
           await call('events','signup',{event:event.id,member:alpha.id,team:'Main'});
           const session=await call('live','start',{title:'Lifecycle capture'});
-          await call('live','ingest',{session:session.id,events:[{id:'lifecycle-kill',at:'2026-09-12T08:10:00Z',kind:'kill',player:'TestAlpha',target:'Enemy',guild:'Rival',class:'Warrior'}]});
+          await call('live','ingest',{session:session.id,events:[{id:'lifecycle-kill',at:`${date}T08:10:00Z`,kind:'kill',player:'TestAlpha',target:'Enemy',guild:'Rival',class:'Warrior'}]});
           const draft=await call('wars','review',{rows:[{name:'TestAlpha',kills:12,deaths:2},{name:'TestBeta',kills:4,deaths:3}]});
-          const war=await call('wars','finalize',{import:draft.id,date:'2026-09-12',type:'Node',result:'Win',location:'Lifecycle Node',participants:[{member:alpha.id,kills:12,deaths:2},{member:beta.id,kills:4,deaths:3}]});
+          const war=await call('wars','finalize',{import:draft.id,date,type:'Node',result:'Win',location:'Lifecycle Node',participants:[{member:alpha.id,kills:12,deaths:2},{member:beta.id,kills:4,deaths:3}]});
           await call('coaching','link_event',{event:event.id,war:war.id});await call('live','link',{session:session.id,war:war.id});
           return {event:event.id,session:session.id,war:war.id,alpha:alpha.id};
         }""")

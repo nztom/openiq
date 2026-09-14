@@ -66,6 +66,43 @@ docker compose --profile discord --profile jobs up -d
 docker compose logs --tail=100 bot scheduler
 ```
 
+## Local release smoke
+
+Run this disposable check before a host rehearsal. It builds a fresh image,
+starts a separately named loopback-only Compose project, verifies liveness,
+readiness, diagnostics, persistence across a web restart, and the scheduler
+profile. It does not contact Discord or prove TLS/proxy behavior.
+
+```sh
+docker build --pull --no-cache --tag openiq:local .
+docker compose --env-file .env.example --profile jobs --profile discord --profile backups config --quiet
+
+# Use a unique project name and unused local port. These settings are only for
+# the disposable local check; production requires HTTPS and Discord settings.
+OPENIQ_BIND=127.0.0.1 OPENIQ_PORT=18765 HTTPS=0 DEBUG=1 \
+ALLOW_LOCAL_LOGIN=1 ENABLE_BACKEND_ADMIN=0 SECRET_KEY=smoke-validation-secret-key-only \
+docker compose --project-name openiq-smoke --env-file .env.example up -d --no-build web
+curl --fail http://127.0.0.1:18765/healthz/
+curl --fail http://127.0.0.1:18765/readyz/
+docker compose --project-name openiq-smoke exec web python manage.py diagnostics
+docker compose --project-name openiq-smoke restart web
+curl --fail http://127.0.0.1:18765/readyz/
+OPENIQ_BIND=127.0.0.1 OPENIQ_PORT=18765 HTTPS=0 DEBUG=1 \
+ALLOW_LOCAL_LOGIN=1 ENABLE_BACKEND_ADMIN=0 SECRET_KEY=smoke-validation-secret-key-only \
+docker compose --project-name openiq-smoke --env-file .env.example --profile jobs up -d --no-build scheduler
+docker compose --project-name openiq-smoke ps
+
+# Remove only this disposable project and its generated data when finished.
+docker compose --project-name openiq-smoke down --volumes
+```
+
+The configuration command validates every optional profile. The scheduler
+runtime is safe to start locally; Discord delivery requires dedicated staging
+credentials and is covered by the Discord staging task. The backup profile
+requires an operator-created backup directory and an actual restore drill, so
+it is covered by the host and backup rehearsal tasks rather than this smoke
+check.
+
 `GUILD_ID` is OpenIQ's numeric database ID from the dashboard API, not the Discord
 server ID. Settings reports local configuration, last capture acknowledgement,
 process heartbeats and the delivery queue; ?configured? does not prove that an
