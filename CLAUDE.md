@@ -18,3 +18,6 @@ On completion, update the task evidence and move the file to `tasks/complete/`
 in the **same commit** as the implementation and tests; push that commit. Leave
 paused work in `tasks/in-progress/` with a handoff note.
 
+When changing behavior or adding code, add or update focused automated tests
+where practical, and run the relevant tests before handoff. This is an
+engineering expectation, not a protected-branch, CI, or pull-request gate.

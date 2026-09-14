@@ -18,3 +18,6 @@ Task workflow:
 Do not pick a task already in `tasks/in-progress/`. If work pauses, add a
 handoff note there; do not silently move it back.
 
+When changing behavior or adding code, add or update focused automated tests
+where practical, and run the relevant tests before handing off. Tests are an
+engineering expectation, not a protected-branch, CI, or pull-request gate.
