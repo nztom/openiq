@@ -2,8 +2,9 @@
 
 Implemented means validated locally with synthetic data or controlled remote
 responses. It does not mean a live Discord/BDO/Twitch installation has passed
-acceptance. [READINESS.md](READINESS.md) is the task-by-task evidence record;
-[RUNBOOK.md](RUNBOOK.md) is the operator entry point.
+acceptance. [RUNBOOK.md](RUNBOOK.md) is the operator entry point. The current
+feature boundary and actionable backlog live in [the task register](../tasks/README.md);
+this document remains the detailed capability matrix.
 
 | Area | Implemented | Still requires external verification |
 |---|---|---|

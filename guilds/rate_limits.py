@@ -23,7 +23,8 @@ class RequestBudgets:
     def __init__(self,get_response):self.get_response=get_response
     def __call__(self,request):
         path=request.path;group=None
-        if path.startswith('/auth/discord/') or path=='/login/':group='oauth'
+        if path=='/admin/login/' and request.method=='POST':group='admin_login'
+        elif path.startswith('/auth/discord/') or path=='/login/':group='oauth'
         elif path=='/recover/':group='recovery'
         elif request.method not in ('GET','HEAD','OPTIONS'):
             if path.startswith('/ocr/'):group='ocr'
@@ -34,7 +35,7 @@ class RequestBudgets:
                 candidate=request.META['HTTP_X_FORWARDED_FOR'].split(',')[-1].strip()
                 try:ip=str(ipaddress.ip_address(candidate))
                 except ValueError:pass
-            identity='user:'+str(request.user.pk) if request.user.is_authenticated else 'ip:'+ip
+            identity='user:'+str(request.user.pk) if request.user.is_authenticated and group!='admin_login' else 'ip:'+ip
             try:allowed,retry=consume(identity,group,settings.REQUEST_LIMITS[group])
             except DatabaseError:return JsonResponse({'error':'Request protection unavailable; retry shortly'},status=503)
             if not allowed:

@@ -41,8 +41,11 @@ docker compose exec web python manage.py diagnostics
 ```
 
 Startup validates settings, applies migrations and rotates the optional backend
-administrator. Its new password appears in the private web logs; restrict access
-to those logs. The `/admin/` account is for backend recovery, not member access.
+administrator. Its new credential is written to `/data/.backend-admin.json` with
+mode 0600. Retrieve it through private operator access using
+`docker compose exec web cat /data/.backend-admin.json`; routine logs contain only
+the file path. Disabling the managed account removes the file. It is regenerated
+on startup and does not need a separate backup. The `/admin/` account is for backend recovery, not member access.
 Demo seeding and member password login stay disabled in production.
 
 Open the HTTPS site and sign in with Discord. A server owner, administrator or
@@ -91,10 +94,33 @@ checks their heartbeats. Keep that setting consistent with enabled profiles.
   `retention` previews age-based cleanup. Historical war scores stay anonymous
   when member identifiers are removed.
 - **Delivery failures:** inspect logs and outbox state. Rate limits retry with
-  backoff; an ambiguous remote creation remains pending for inspection. Resolve
+  backoff; an ambiguous remote creation is marked `uncertain` for inspection. Resolve
   the remote outcome before retrying. Do not delete idempotency records merely
   to force another message. Discord and the local database cannot jointly offer
   an unconditional exactly-once transaction.
+
+The queue stores claims and retries on `Outbox`. Retryable failures stop after
+six attempts; expired sending leases become `uncertain` rather than issuing a
+second blind create. Drafts with nonnumeric destinations do not consume the
+delivery batch limit. Long notifications are delivered as full-text attachments.
+Cancellation prevents unsent retries; a request already in flight may finish.
+
+Use one of these commands to reconcile an `uncertain` or `failed` notification:
+
+```sh
+# Read-only Discord search, restricted to this bot's message marker.
+python manage.py reconcile_delivery OUTBOX_ID --find
+# Or supply the exact message ID; author and channel are verified remotely.
+python manage.py reconcile_delivery OUTBOX_ID --message-id MESSAGE_ID
+# Only after checking Discord and confirming that no message exists:
+python manage.py reconcile_delivery OUTBOX_ID --confirm-not-sent
+```
+
+Successful reconciliation queues the notification for the next scheduler pass;
+it does not send a message. A verified existing message is edited rather than
+recreated. The bounded search checks at most 10,000 recent messages; an absent
+match does not prove that an older message was never sent. Pre-integration local
+messages may lack a footer marker, so use their explicit message IDs.
 
 ## Shutdown and installation acceptance
 

@@ -35,6 +35,15 @@ POST /capture/<guild_id>/<session_id>/  (scoped bearer credential, not a browser
 
 JSON mutation responses contain `{ "ok": true, "result": ... }`. Domain validation returns HTTP 400; denied access returns HTTP 403. Modules validate cross-guild record references. The service wraps mutation, revision increment and audit entry in one database transaction.
 
+External AI/Twitch/roster preparation runs before that transaction. The service
+rechecks access, role, guild revision and configuration before accepting its
+result; a concurrent change returns a retryable validation error rather than
+overwriting newer state. Welcome-role HTTP calls also run outside the component
+transaction. Successful member responses omit private `notes` fields even when
+the underlying action returns a full member record. War saves/deletions generate
+targeted correction history inside the mutation transaction; privacy scrubbing
+does not recreate removed data in new history entries.
+
 ## Normalized event file
 
 A JSON array or newline-delimited objects:

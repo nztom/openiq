@@ -1,103 +1,100 @@
-"""Explicitly enabled Discord delivery; default behavior is always a local preview."""
+"""Opt-in Discord delivery with durable claims and explicit uncertain outcomes."""
+import json
 import os
+from datetime import timedelta
+
 import httpx
-import hashlib
-import time
-import uuid
 from django.db import transaction
-from django.db.models import F
-from .models import Guild
+from django.db.models import F,Q
+from django.utils import timezone
+from django.utils.crypto import salted_hmac
 from .models import Outbox,Record
 from .modules.core import save,Invalid
 
-def deliver(item,enabled=False,queued=False):
-    if not enabled:
-        return _deliver(item,False)
-    # Persist a claim before network I/O so concurrent commands/workers cannot
-    # both create a message. A crashed process relinquishes its claim in an hour.
-    claim=uuid.uuid4().hex
-    with transaction.atomic():
-        Guild.objects.filter(pk=item.guild_id).update(revision=F('revision')+1)
-        state=Record.objects.filter(guild=item.guild,kind='delivery_retry',key=str(item.pk)).first()
-        data=state.data if state else {}
-        if data.get('lease_until',0)>time.time():
-            return {'status':'busy'}
-        item.refresh_from_db()
-        if queued and item.status!='preview':
-            return {'status':item.status}
-        data.update(claim=claim,lease_until=time.time()+3600)
-        save(item.guild,'delivery_retry',data,str(item.pk))
-    try:
-        result=_deliver(item,True)
-    except Exception as exc:
-        data.update(attempts=data.get('attempts',0)+1,lease_until=0)
-        delay=min(3600,30*2**min(data['attempts']-1,7))
-        if isinstance(exc,httpx.HTTPStatusError) and exc.response.status_code==429:
-            try:delay=max(delay,min(86400,float(exc.response.headers.get('Retry-After',delay))))
-            except ValueError:pass
-        data.update(next_attempt=time.time()+delay,error='Delivery failed; check configuration, permissions and remote outcome.')
-        save(item.guild,'delivery_retry',data,str(item.pk))
-        raise
-    else:
-        save(item.guild,'delivery_retry',{'attempts':0,'next_attempt':0,'lease_until':0},str(item.pk))
-        return result
 
-
-def _deliver(item,enabled=False):
-    if not enabled:
-        return {'status':'preview','text':item.text,'channel':item.channel}
-    if os.getenv('ENABLE_DISCORD_DELIVERY')!='1' or not os.getenv('DISCORD_BOT_TOKEN'):
-        raise Invalid('Discord delivery is not enabled')
-    if not item.channel.isdecimal():
-        raise Invalid('Set a numeric Discord channel ID before delivery')
-    previous=Record.objects.filter(guild=item.guild,kind='delivery',key=str(item.pk)).first()
-    if previous and previous.data['channel']!=item.channel:
-        previous.delete();previous=None
-        Record.objects.filter(guild=item.guild,kind='delivery_pending',key=str(item.pk)).delete()
-    url=f'https://discord.com/api/v10/channels/{item.channel}/messages'
-    if previous:url+='/'+previous.data['message_id']
-    method='PATCH' if previous else 'POST'
-    payload={'content':item.text[:2000],'allowed_mentions':{'parse':[]}}
+def payload_for(item):
+    payload={'content':item.text,'allowed_mentions':{'parse':[]},'components':[],'embeds':[]}
     components=Record.objects.filter(guild=item.guild,kind='message_components',key=str(item.pk)).first()
     if components:
         payload['components']=components.data['components']
         payload['embeds']=components.data.get('embeds',[])
-    marker='OpenIQ delivery '+str(item.guild_id)+':'+str(item.pk)
-    if not previous:
-        pending=Record.objects.filter(guild=item.guild,kind='delivery_pending',key=str(item.pk)).first()
-        if pending:
-            # Recover remote success after a lost response or failed local save.
-            before=None
-            for page in range(100):
-                params={'limit':100}
-                if before:params['before']=before
-                found=httpx.request('GET',url,headers={'Authorization':'Bot '+os.environ['DISCORD_BOT_TOKEN']},params=params,timeout=15)
-                found.raise_for_status();messages=found.json()
-                match=next((m for m in messages if any(e.get('footer',{}).get('text')==marker for e in m.get('embeds',[])) and m.get('author',{}).get('bot')),None)
-                if match:
-                    previous=save(item.guild,'delivery',{'message_id':match['id'],'channel':item.channel},str(item.pk))
-                    url+='/'+match['id'];method='PATCH';break
-                if len(messages)<100:
-                    raise Invalid('Delivery outcome is unresolved; inspect the channel before retrying. No duplicate message was sent.')
-                before=messages[-1]['id']
-            else:raise Invalid('Delivery history exceeds the reconciliation limit; inspect the channel before retrying.')
-        else:
-            save(item.guild,'delivery_pending',{'channel':item.channel},str(item.pk))
-    payload['embeds']=[*payload.get('embeds',[]),{'footer':{'text':marker}}]
-    if method=='POST':
-        payload['nonce']=hashlib.sha256(marker.encode()).hexdigest()[:24]
-        payload['enforce_nonce']=True
-    response=httpx.request(method,url,headers={'Authorization':'Bot '+os.environ['DISCORD_BOT_TOKEN']},json=payload,timeout=15)
-    if isinstance(response.status_code,int) and 400<=response.status_code<500 and response.status_code not in (408,):
-        # A definite rejection did not create a message. A timeout or server
-        # failure remains uncertain and must be reconciled before any POST.
-        Record.objects.filter(guild=item.guild,kind='delivery_pending',key=str(item.pk)).delete()
-    response.raise_for_status();message=response.json()
-    save(item.guild,'delivery',{'message_id':message['id'],'channel':item.channel},str(item.pk))
+    return payload
+
+
+def deliver(item,enabled=False,queued=False):
+    if not enabled:return {'status':'preview','text':item.text,'channel':item.channel}
+    if os.getenv('ENABLE_DISCORD_DELIVERY')!='1' or not os.getenv('DISCORD_BOT_TOKEN'):raise Invalid('Discord delivery is not enabled')
+    now=timezone.now()
+    Outbox.objects.filter(pk=item.pk,status='sending',lease_until__lte=now).update(status='uncertain',last_error='Worker stopped during delivery; reconcile the remote message')
     with transaction.atomic():
-        Guild.objects.filter(pk=item.guild_id).update(revision=F('revision')+1)
-        current_components=Record.objects.filter(guild=item.guild,kind='message_components',key=str(item.pk)).first()
-        if (current_components.data if current_components else None)==(components.data if components else None):
-            Outbox.objects.filter(pk=item.pk,text=item.text,channel=item.channel).update(status='sent')
-    Record.objects.filter(guild=item.guild,kind='delivery_pending',key=str(item.pk)).delete()
-    return {'status':'sent','message_id':message['id']}
+        item=Outbox.objects.get(pk=item.pk)
+        if not item.channel.isdecimal():
+            raise Invalid('Set a numeric Discord channel ID before delivery')
+        eligible=Outbox.objects.filter(pk=item.pk).exclude(status__in=['sending','uncertain','cancelled'])
+        if queued:eligible=eligible.filter(status__in=['preview','retry']).filter(Q(retry_at__isnull=True)|Q(retry_at__lte=now))
+        claimed=eligible.update(status='sending',attempts=F('attempts')+1,lease_until=now+timedelta(seconds=90))
+        if not claimed:
+            return {'status':Outbox.objects.get(pk=item.pk).status}
+        item=Outbox.objects.select_related('guild').get(pk=item.pk)
+        payload=payload_for(item)
+    previous=Record.objects.filter(guild=item.guild,kind='delivery',key=str(item.pk)).first()
+    if previous and previous.data['channel']!=item.channel:previous=None
+    url=f'https://discord.com/api/v10/channels/{item.channel}/messages'
+    if previous:url+='/'+previous.data['message_id']
+    method='PATCH' if previous else 'POST'
+    outgoing=dict(payload)
+    outgoing['embeds']=[*payload['embeds'],{'footer':{'text':f'OpenIQ delivery {item.guild_id}:{item.pk}'}}]
+    if not previous:
+        outgoing.update(nonce=salted_hmac('openiq.outbox',f'{item.pk}:{item.channel}').hexdigest()[:24],enforce_nonce=True)
+    try:
+        if len(item.text.encode('utf-16-le'))//2>2000:
+            data=item.text.encode('utf-8')
+            if len(data)>8*1024*1024:raise Invalid('Notification exceeds the attachment limit')
+            outgoing['content']='Full notification attached.';outgoing['attachments']=[]
+            response=httpx.request(method,url,headers={'Authorization':'Bot '+os.environ['DISCORD_BOT_TOKEN']},data={'payload_json':json.dumps(outgoing)},files={'files[0]':('notification.txt',data,'text/plain')},timeout=15)
+        else:
+            outgoing['attachments']=[]
+            response=httpx.request(method,url,headers={'Authorization':'Bot '+os.environ['DISCORD_BOT_TOKEN']},json=outgoing,timeout=15)
+        response.raise_for_status();message=response.json()
+        with transaction.atomic():
+            current=Outbox.objects.get(pk=item.pk)
+            if current.status!='sending' or current.lease_until!=item.lease_until:
+                return {'status':current.status}
+            save(item.guild,'delivery',{'message_id':message['id'],'channel':item.channel},str(item.pk))
+            status='sent' if current.channel==item.channel and payload_for(current)==payload else 'preview'
+            Outbox.objects.filter(pk=item.pk).update(status=status,attempts=0,lease_until=None,retry_at=None,last_error='')
+            if status=='sent' and item.key.startswith(f'{item.guild_id}:reminder:'):
+                reminder=Record.objects.filter(guild_id=item.guild_id,kind='reminder',key=item.key.split(':',2)[2]).first()
+                if reminder and reminder.data['status']!='cancelled':reminder.data['status']='sent';reminder.save()
+        return {'status':status,'message_id':message['id']}
+    except Exception as exc:
+        status='uncertain';delay=min(300,2**min(item.attempts,8))
+        if isinstance(exc,httpx.HTTPStatusError):
+            code=exc.response.status_code
+            status='retry' if code==429 or (code>=500 and previous) else 'uncertain' if code>=500 or code==408 else 'failed'
+            if code==429:
+                value=exc.response.headers.get('Retry-After',delay)
+                try:value=exc.response.json().get('retry_after',value)
+                except ValueError:pass
+                try:delay=max(delay,min(3600,float(value)))
+                except (KeyError,ValueError,TypeError):pass
+        elif isinstance(exc,httpx.TransportError) and previous:status='retry'
+        elif isinstance(exc,Invalid):status='failed'
+        if status=='retry' and item.attempts>=6:status='failed'
+        Outbox.objects.filter(pk=item.pk,status='sending',lease_until=item.lease_until).update(status=status,lease_until=None,retry_at=timezone.now()+timedelta(seconds=delay),last_error=f'{type(exc).__name__}: delivery {status}; check Discord permissions or reconcile the message')
+        raise
+
+
+def send_due(limit=100,stop_event=None):
+    if os.getenv('ENABLE_DISCORD_DELIVERY')!='1':return {'sent':0,'failed':0}
+    now=timezone.now();sent=failed=0
+    Outbox.objects.filter(status='sending',lease_until__lte=now).update(status='uncertain',last_error='Worker stopped during delivery; reconcile the remote message')
+    items=Outbox.objects.filter(status__in=['preview','retry'],channel__regex=r'^[0-9]+$').filter(Q(retry_at__isnull=True)|Q(retry_at__lte=now)).order_by('created','pk')
+    for item in items[:limit]:
+        if stop_event:
+            if stop_event.is_set():break
+            from guilds.health import heartbeat
+            heartbeat('scheduler')
+        try:result=deliver(item,True,queued=True);sent+=int(result['status']=='sent')
+        except Exception:failed+=1
+    return {'sent':sent,'failed':failed}

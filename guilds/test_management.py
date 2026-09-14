@@ -2,7 +2,7 @@
 import io,json,tempfile
 from pathlib import Path
 from unittest.mock import Mock,patch
-from django.test import TestCase
+from django.test import TestCase,override_settings
 from django.core.management import call_command,CommandError
 from django.contrib.auth.models import User
 from .models import Guild,Access,Outbox,Record
@@ -43,10 +43,15 @@ class ManagementTests(TestCase):
         with patch.dict('os.environ',{'DISCORD_BOT_TOKEN':'','ENABLE_DISCORD_DELIVERY':'0'}),self.assertRaises(CommandError):self.call('runbot')
     def test_backend_admin_rotates_and_disables(self):
         with patch.dict('os.environ',{'BACKEND_ADMIN_USERNAME':''}),self.assertRaises(CommandError):self.call('bootstrap_admin')
-        with patch.dict('os.environ',{'ENABLE_BACKEND_ADMIN':'1','BACKEND_ADMIN_USERNAME':'break-glass'}),patch('secrets.token_urlsafe',side_effect=['first-password','second-password']):
-            first=self.call('bootstrap_admin');user=User.objects.get(username='break-glass');self.assertTrue(user.is_superuser);self.assertTrue(user.check_password('first-password'));self.assertIn('Password: first-password',first)
-            self.call('bootstrap_admin');user.refresh_from_db();self.assertFalse(user.check_password('first-password'));self.assertTrue(user.check_password('second-password'))
-        with patch.dict('os.environ',{'ENABLE_BACKEND_ADMIN':'0','BACKEND_ADMIN_USERNAME':'break-glass'}):self.assertIn('disabled',self.call('bootstrap_admin'))
+        with tempfile.TemporaryDirectory() as directory,override_settings(DATA_DIR=Path(directory)):
+            credential=Path(directory)/'.backend-admin.json'
+            with patch.dict('os.environ',{'ENABLE_BACKEND_ADMIN':'1','BACKEND_ADMIN_USERNAME':'break-glass'}),patch('secrets.token_urlsafe',side_effect=['first-password','second-password']):
+                first=self.call('bootstrap_admin');user=User.objects.get(username='break-glass');self.assertTrue(user.is_superuser);self.assertTrue(user.check_password('first-password'));self.assertNotIn('first-password',first)
+                self.assertEqual(json.loads(credential.read_text())['password'],'first-password')
+                self.call('bootstrap_admin');user.refresh_from_db();self.assertFalse(user.check_password('first-password'));self.assertTrue(user.check_password('second-password'))
+                self.assertEqual(json.loads(credential.read_text())['password'],'second-password')
+            with patch.dict('os.environ',{'ENABLE_BACKEND_ADMIN':'0','BACKEND_ADMIN_USERNAME':'break-glass'}):self.assertIn('disabled',self.call('bootstrap_admin'))
+            self.assertFalse(credential.exists())
         user.refresh_from_db();self.assertFalse(user.is_staff);self.assertFalse(user.has_usable_password())
     def test_scheduler_runs_once_and_handles_failure(self):
         for failure in [None,RuntimeError('failure')]:

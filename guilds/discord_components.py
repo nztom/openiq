@@ -20,8 +20,19 @@ def event_components(g,event):
     buttons.append({'type':2,'style':2,'label':'Withdraw','disabled':disabled,'custom_id':signed_id('signup',g,event.key,'withdraw',layout)})
     return [{'type':1,'components':buttons[i:i+5]} for i in range(0,len(buttons),5)]
 
-@transaction.atomic
 def process(user,custom_id,deliver_roles=False,interaction_id=None):
+    if deliver_roles and custom_id.startswith('welcome:'):
+        prepared=_process(user,custom_id,deliver_roles,interaction_id,prepare_only=True)
+        if prepared.get('duplicate'):
+            return prepared
+        from .discord_welcome import choose
+        result=choose(user,prepared['guild'],prepared['member'],prepared['role'],enabled=True)
+        return _process(user,custom_id,deliver_roles,interaction_id,welcome_result=result)
+    return _process(user,custom_id,deliver_roles,interaction_id)
+
+
+@transaction.atomic
+def _process(user,custom_id,deliver_roles=False,interaction_id=None,prepare_only=False,welcome_result=None):
     fields=custom_id.split(':')
     if len(fields) not in [4,5] or fields[0] not in ['signup','welcome'] or not fields[1].isdecimal():raise Invalid('Unknown component')
     kind,gid,key,index=fields[:4];g=Guild.objects.get(pk=gid);access(user,g)
@@ -40,8 +51,13 @@ def process(user,custom_id,deliver_roles=False,interaction_id=None):
             if previous.data!={'user':user.pk,'component':custom_id}:raise Invalid('Interaction already used')
             return {'duplicate':True}
     if kind=='welcome':
-        from .discord_welcome import choose
-        result=choose(user,g,key,index,enabled=deliver_roles)
+        if prepare_only:
+            return {'guild':g,'member':key,'role':index}
+        if welcome_result is not None:
+            result=welcome_result
+        else:
+            from .discord_welcome import choose
+            result=choose(user,g,key,index,enabled=False)
     else:
         member=own_member(g,user)
         if not member:raise Invalid('Ask an officer to link your account first')

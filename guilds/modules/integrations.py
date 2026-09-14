@@ -43,10 +43,6 @@ def handle(g,action,p,role,user):
             raise Invalid('Invalid Twitch handle')
         m.data['twitch']=handle; m.save(); return public(m)
     require(role)
-    if action=='roster_fetch':
-        return {'names':fetch_roster(text(p['url'],'guild page URL',2000)),'requires_confirmation':True}
-    if action=='roster_source':
-        require(role,'owner'); url=text(p['url'],'guild page URL',2000); names=fetch_roster(url); g.config.setdefault('sync',{})['url']=url; g.save(); return {'names':names,'source_saved':True}
     if action=='roster_preview':
         names=roster_html(text(p['html'],'roster HTML',1000000))
         if not names:
@@ -59,27 +55,8 @@ def handle(g,action,p,role,user):
         clean=[]
         for stream in streams: clean.append({'handle':text(stream['handle'],maximum=25),'title':text(stream['title']),'viewers':integer(stream['viewers'],'viewers'),'category':str(stream.get('category','BDO')),'partner':bool(stream.get('partner',False))})
         return public(save(g,'streams',{'items':clean,'source':'fixture','at':now()},'current'))
-    if action=='streams_refresh':
-        if g.config.get('integrations',{}).get('twitch') is False:
-            raise Invalid('Twitch is disabled in guild settings')
-        client=os.getenv('TWITCH_CLIENT_ID'); token=os.getenv('TWITCH_ACCESS_TOKEN')
-        if not client or not token:
-            raise Invalid('Set TWITCH_CLIENT_ID and TWITCH_ACCESS_TOKEN, or use the local stream fixture')
-        headers={'Client-Id':client,'Authorization':'Bearer '+token}
-        response=httpx.get('https://api.twitch.tv/helix/streams',params={'game_id':'386821','first':100},headers=headers,timeout=15)
-        if response.status_code==429:
-            raise Invalid('Twitch rate limit reached; retry later')
-        response.raise_for_status()
-        data=response.json()['data']; partner_logins=set()
-        if data:
-            try:
-                users=httpx.get('https://api.twitch.tv/helix/users',params=[('login',s['user_login']) for s in data],headers=headers,timeout=15)
-                users.raise_for_status()
-                partner_logins={u['login'].casefold() for u in users.json()['data'] if u.get('broadcaster_type')=='partner'}
-            except (httpx.HTTPError,KeyError,TypeError,ValueError):
-                pass
-        streams=[{'handle':s['user_login'],'title':s['title'],'viewers':s['viewer_count'],'category':s.get('game_name') or 'BDO','partner':s['user_login'].casefold() in partner_logins} for s in data]
-        return public(save(g,'streams',{'items':streams,'source':'Twitch','at':now()},'current'))
+    if action in ('roster_fetch','roster_source','streams_refresh'):
+        raise Invalid('Use the shared service to prepare external integrations')
     raise Invalid('Unknown integration action')
 
 def paired_scores(texts):
@@ -121,3 +98,26 @@ def fetch_roster(url):
     if not names:
         raise Invalid('No roster recognized. No members were changed.')
     return names
+
+
+def fetch_streams(g):
+    if g.config.get('integrations',{}).get('twitch') is False:
+        raise Invalid('Twitch is disabled in guild settings')
+    client=os.getenv('TWITCH_CLIENT_ID'); token=os.getenv('TWITCH_ACCESS_TOKEN')
+    if not client or not token:
+        raise Invalid('Set TWITCH_CLIENT_ID and TWITCH_ACCESS_TOKEN, or use the local stream fixture')
+    headers={'Client-Id':client,'Authorization':'Bearer '+token}
+    response=httpx.get('https://api.twitch.tv/helix/streams',params={'game_id':'386821','first':100},headers=headers,timeout=15)
+    if response.status_code==429:
+        raise Invalid('Twitch rate limit reached; retry later')
+    response.raise_for_status()
+    data=response.json()['data']; partner_logins=set()
+    if data:
+        try:
+            users=httpx.get('https://api.twitch.tv/helix/users',params=[('login',s['user_login']) for s in data],headers=headers,timeout=15)
+            users.raise_for_status()
+            partner_logins={u['login'].casefold() for u in users.json()['data'] if u.get('broadcaster_type')=='partner'}
+        except (httpx.HTTPError,KeyError,TypeError,ValueError):
+            pass
+    streams=[{'handle':s['user_login'],'title':s['title'],'viewers':s['viewer_count'],'category':s.get('game_name') or 'BDO','partner':s['user_login'].casefold() in partner_logins} for s in data]
+    return {'items':streams,'source':'Twitch','at':now()}

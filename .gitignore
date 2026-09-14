@@ -4,6 +4,7 @@ __pycache__/
 *.sqlite3
 .env
 .secret-key
+.backend-admin.json
 media/
 staticfiles/
 *.sqlite3-*

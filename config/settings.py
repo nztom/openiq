@@ -8,7 +8,7 @@ ALLOW_LOCAL_LOGIN = os.getenv('ALLOW_LOCAL_LOGIN', '0') == '1'
 OPENIQ_VERSION = os.getenv('OPENIQ_VERSION','development')
 REQUIRED_PROCESSES = [x for x in os.getenv('REQUIRED_PROCESSES','').split(',') if x in ('bot','scheduler')]
 REQUEST_LIMITS_ENABLED = os.getenv('REQUEST_LIMITS_ENABLED','1') == '1'
-REQUEST_LIMITS = {name:int(os.getenv('RATE_LIMIT_'+name.upper(),str(value))) for name,value in {'oauth':20,'recovery':5,'ocr':10,'mutation':240}.items()}
+REQUEST_LIMITS = {name:int(os.getenv('RATE_LIMIT_'+name.upper(),str(value))) for name,value in {'oauth':20,'admin_login':5,'recovery':5,'ocr':10,'mutation':240}.items()}
 TRUST_PROXY_HEADERS = os.getenv('TRUST_PROXY','0') == '1'
 DATA_DIR = Path(os.getenv('OPENIQ_DATA_DIR',str(BASE_DIR)))
 DATA_DIR.mkdir(parents=True,exist_ok=True)

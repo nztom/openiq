@@ -22,7 +22,8 @@ def status(guild):
     sessions=Record.objects.filter(guild=guild,kind='session')
     latest=max((r.data.get('capture_last_seen','') for r in sessions),default='')
     add('Capture','disabled' if not guild.config.get('capture',{}).get('enabled',True) else 'batch received' if latest else 'waiting','Last acknowledged batch: '+latest if latest else 'Start a live session, pair capture and forward its log. See CAPTURE_HANDOFF.md.')
-    pending=Outbox.objects.filter(guild=guild,status='preview').count()
-    add('Discord delivery','enabled' if os.getenv('ENABLE_DISCORD_DELIVERY')=='1' else 'disabled',f'{pending} queued messages. Enable delivery and the scheduler only after checking channel permissions.')
+    pending=Outbox.objects.filter(guild=guild,status__in=['preview','retry']).count()
+    attention=Outbox.objects.filter(guild=guild,status__in=['uncertain','failed']).count()
+    add('Discord delivery','enabled' if os.getenv('ENABLE_DISCORD_DELIVERY')=='1' else 'disabled',f'{pending} queued messages; {attention} require operator reconciliation. Enable delivery and the scheduler only after checking channel permissions.')
     add('Member access','configured' if guild.config.get('roles',{}).get('member') else 'needs setup','Configure Discord member roles and notification channels in Settings.')
     return result

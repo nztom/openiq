@@ -125,7 +125,7 @@ class WorkflowTests(TestCase):
             self.assertTrue(request.call_args.args[1].endswith('/456'))
             item.status='preview';item.save();request.side_effect=httpx.ConnectError('offline')
             with self.assertRaises(httpx.ConnectError):deliver(item,True)
-            item.refresh_from_db();self.assertEqual(item.status,'preview')
+            item.refresh_from_db();self.assertEqual(item.status,'retry')
     def test_ai_errors_and_permission(self):
         m=self.roster()
         with patch.dict(os.environ,{'OLLAMA_MODEL':''}):

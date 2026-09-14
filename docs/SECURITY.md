@@ -24,6 +24,9 @@ Request budgets use the shared database and expire every minute. Defaults are
 20 OAuth/login requests, 5 recovery requests, 10 OCR uploads and 240 mutations
 per authenticated user or anonymous IP. Configure `RATE_LIMIT_OAUTH`,
 `RATE_LIMIT_RECOVERY`, `RATE_LIMIT_OCR`, and `RATE_LIMIT_MUTATION` for guild load.
+Admin password POSTs have an independent budget of 5 per client IP per minute,
+configured with `RATE_LIMIT_ADMIN_LOGIN`; changing the attempted username or
+using a member session does not change that IP budget.
 Blocked requests return HTTP 429 and Retry-After. Only a trusted proxy configuration
 permits the final X-Forwarded-For address to identify the client; configure that
 proxy to overwrite/append the real client address. Untrusted forwarding headers
@@ -34,6 +37,16 @@ to seven days). OAuth refresh does not extend this absolute deadline. Django
 rotates session keys at login, and OpenIQ clears any previous Discord state;
 logout flushes the session and its tokens. Gunicorn access logs omit query strings,
 and application logs redact configured secrets and OAuth callback codes.
+
+The rotating recovery administrator credential is stored in
+`OPENIQ_DATA_DIR/.backend-admin.json` with mode 0600. It is not printed to routine
+logs, included in the image, or tracked in Git. Retrieve it only through private
+operator access, and do not paste its contents into logs or tickets. Disabling
+the managed administrator removes this file.
+
+Successful member actions are serialized through the shared service boundary,
+which removes officer-only `notes` fields, including nested command results.
+The stored notes and authorized officer responses remain available.
 
 To rotate the application signing key, stop all services, preserve a private
 backup and replace the persistent `.secret-key` with a newly generated random key

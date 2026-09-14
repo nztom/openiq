@@ -72,6 +72,9 @@ def synchronize(user,g,ticket_key,enabled=False):
     Record.objects.filter(guild=g,kind='ticket_pending',key=ticket.key).delete()
     transcript=ticket.data['subject']+'\n'+ticket.data['text']+'\n'+'\n'.join(r['by']+': '+r['text'] for r in ticket.data['replies'])
     for offset in range(0,len(transcript),1900):
-        item,_=Outbox.objects.update_or_create(guild=g,key=f'{g.pk}:ticket:{ticket.key}:{offset//1900}',defaults={'channel':channel_id,'text':transcript[offset:offset+1900],'status':'preview'})
+        from .modules.community import preview
+        with transaction.atomic():
+            result=preview(g,f'ticket:{ticket.key}:{offset//1900}',transcript[offset:offset+1900],channel_id)
+            item=Outbox.objects.get(pk=result['id'])
         deliver(item,enabled=True)
     return {'mode':'sent','channel_id':channel_id,'status':ticket.data['status']}

@@ -4,7 +4,7 @@
 
 A self-hosted guild-management application for Black Desert guilds. Django with SQLite or PostgreSQL powers independent domain modules; the browser UI uses HTML/CSS/JavaScript.
 
-**Status:** working local platform with fixtures, reviewed imports and optional external adapters. A calibrated TCP/PCAP decoder is implemented and tested with synthetic captures; its historical calibration is not verified against the current BDO patch. Discord/Twitch adapters require credentials and have not been exercised against live accounts. See [feature status](docs/FEATURES.md) for the precise boundaries.
+**Status:** locally validated platform with fixtures, reviewed imports and optional external adapters. A calibrated TCP/PCAP decoder is implemented and tested with synthetic captures; its historical calibration is not verified against the current BDO patch. Discord/Twitch adapters require credentials and have not been exercised against live accounts. See the [feature state](tasks/FEATURE_STATE.md) and [task register](tasks/README.md) for precise boundaries and planned work.
 
 See the [production runbook](docs/RUNBOOK.md) for Discord application setup, first-run onboarding and daily operations.
 
@@ -54,7 +54,7 @@ password if enabling `SEED_DEMO=1`); leave it disabled for a guild installation.
 enables secure cookies and HTTPS redirects when deployed behind TLS; set
 `TRUST_PROXY=1` only for a trusted reverse proxy that controls forwarded headers.
 
-Compose enables one break-glass Django backend account by default. Each web-container start creates or rotates its random password and prints the new `/admin/` credential to `docker compose logs web`; the scheduler never rotates it. Set `ENABLE_BACKEND_ADMIN=0` to disable that managed account on the next web start, or change its stable username with `BACKEND_ADMIN_USERNAME`. This account is for backend recovery and inspection, not normal guild membership.
+Compose enables one break-glass Django backend account by default. Each web-container start creates or rotates its random password and writes the `/admin/` credential to `/data/.backend-admin.json` with mode 0600; startup logs contain only the file path. Retrieve it through private operator access with `docker compose exec web cat /data/.backend-admin.json`. The scheduler never rotates it. Set `ENABLE_BACKEND_ADMIN=0` to disable the account and remove that file on the next web start, or change its stable username with `BACKEND_ADMIN_USERNAME`. This account is for backend recovery and inspection, not normal guild membership.
 
 The Docker container hosts the platform. The desktop/live-interface capture process remains on the game host; offline PCAP parsing can also run in the image. No privileged container or host-network mode is required for the dashboard.
 
@@ -104,7 +104,7 @@ Each module exposes `handle(guild, action, payload, role, user)` and uses shared
 - `integrations.py`, `logformat.py`, `guilds/capture.py`: OCR, roster HTML, Twitch and event-file adapters.
 - `commands.py`, `discord_auth.py`, `delivery.py`: local command routing, optional OAuth and explicit notification delivery.
 
-Records have a relational guild/kind/key envelope, unique constraints and module-owned JSON payloads. Mutations acquire the database writer lock before reading mutable state and audit successful actions in the same transaction. This targets small guild installations; PostgreSQL has native snapshot/restore and concurrency integration tests. Larger deployments still need workload-specific validation.
+Records have a relational guild/kind/key envelope, unique constraints and module-owned JSON payloads. External AI, Twitch and roster reads are prepared before acquiring the writer lock; access, role, guild revision and configuration are checked again before committing their results. Local mutations and audit entries share a short transaction. War correction history records changed rows rather than scanning every war around unrelated actions. This targets small guild installations; PostgreSQL has native snapshot/restore and concurrency integration tests. Larger deployments still need workload-specific validation.
 
 ## Optional integrations and tools
 
@@ -255,7 +255,7 @@ Optional AI text generation uses a local Ollama server when `OLLAMA_MODEL` is se
 
 ## Test coverage
 
-The Python application and management commands currently have **100% statement and branch coverage** across **119 tests**. Coverage excludes test files and generated migrations. The C tracer is selected explicitly because Python 3.14's default monitoring tracer reported false missing branches for compact exception paths.
+The release gate requires **100% statement and branch coverage** for the Python application and management commands. The gate report records the current test count and any skipped platform-specific tests. Coverage excludes test files and generated migrations. The C tracer is selected explicitly because Python 3.14's default monitoring tracer reported false missing branches for compact exception paths.
 
 ```bash
 python -m pip install -r requirements-dev.txt

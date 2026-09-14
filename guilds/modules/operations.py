@@ -5,7 +5,7 @@ from .core import *
 from .community import preview
 from .analytics import calculate
 
-def handle(g,action,p,role,user):
+def handle(g,action,p,role,user,sources=None):
     if action in ['challenge','accept_challenge']:
         import secrets
         if action=='challenge':
@@ -35,37 +35,29 @@ def handle(g,action,p,role,user):
         from .community import handle as community
         community(g,'run_due',{},role,user)
         at=datetime.fromisoformat(timestamp(p.get('at',now())))
-        days=integer(p.get('days',14 if action=='catchup' else 0),'lookback',0,90)
         count=0
         from .events import handle as events
         for event in rows(g,'event'):
             if event.data.get('recurrence_days') and not event.data.get('next_event') and event.data['at']<=at.isoformat():
                 events(g,'next',{'event':event.key},role,user); count+=1
-        for kind in ['weekly','sync']:
-            config=g.config.get(kind,{})
-            if not config.get('enabled'):continue
-            local=at.astimezone(ZoneInfo(config.get('timezone','Pacific/Auckland')))
-            for offset in range(days+1):
-                day=local.date()-timedelta(days=offset)
-                if day.weekday()!=config.get('weekday',0) or (offset==0 and local.hour<config.get('hour',20)):continue
-                key=kind+':'+day.isoformat()
-                if Record.objects.filter(guild=g,kind='job',key=key).exists():continue
-                if kind=='weekly':
-                    start=(day-timedelta(days=7)).isoformat();end=day.isoformat();wars=[w for w in rows(g,'war') if start<w.data['date']<=end]
-                    preview(g,key,f'{g.name}: {len(wars)} wars for week ending {end}.',config.get('channel','preview'))
-                    status='previewed'
-                else:
-                    names=g.config.get('sync_fixture')
-                    if config.get('url'):
-                        from .integrations import fetch_roster
-                        try:names=fetch_roster(config['url'])
-                        except Exception as exc:
-                            save(g,'job',{'type':kind,'at':at.isoformat(),'status':'source_error','message':str(exc)},key);count+=1;continue
-                    if names:
-                        from .roster import handle as roster
-                        roster(g,'sync',{'names':names},role,user);status='fixture_synced'
-                    else:status='needs_roster_source'
-                save(g,'job',{'type':kind,'at':at.isoformat(),'status':status},key);count+=1
+        for kind,key,day,at,config in due_jobs(g,action,p):
+            if kind=='weekly':
+                start=(day-timedelta(days=7)).isoformat();end=day.isoformat();wars=[w for w in rows(g,'war') if start<w.data['date']<=end]
+                preview(g,key,f'{g.name}: {len(wars)} wars for week ending {end}.',config.get('channel','preview'))
+                status='previewed'
+            else:
+                names=g.config.get('sync_fixture')
+                if config.get('url'):
+                    if sources is None or config['url'] not in sources:
+                        raise Invalid('Roster synchronization requires prepared source data')
+                    names,error=sources[config['url']]
+                    if error:
+                        save(g,'job',{'type':kind,'at':at.isoformat(),'status':'source_error','message':error},key);count+=1;continue
+                if names:
+                    from .roster import handle as roster
+                    roster(g,'sync',{'names':names},role,user);status='fixture_synced'
+                else:status='needs_roster_source'
+            save(g,'job',{'type':kind,'at':at.isoformat(),'status':status},key);count+=1
         return {'processed':count}
     if action=='recruitment_form':
         require(role,'owner');questions=p.get('questions',[])
@@ -74,3 +66,18 @@ def handle(g,action,p,role,user):
     if action=='ticket_category':
         require(role,'owner');return public(save(g,'ticket_category',{'name':text(p['name']),'staff_role':str(p.get('staff_role',''))},p.get('id')))
     raise Invalid('Unknown operations action')
+
+
+def due_jobs(g,action,p):
+    at=datetime.fromisoformat(timestamp(p.get('at',now())))
+    days=integer(p.get('days',14 if action=='catchup' else 0),'lookback',0,90)
+    for kind in ['weekly','sync']:
+        config=g.config.get(kind,{})
+        if not config.get('enabled'):continue
+        local=at.astimezone(ZoneInfo(config.get('timezone','Pacific/Auckland')))
+        for offset in range(days+1):
+            day=local.date()-timedelta(days=offset)
+            if day.weekday()!=config.get('weekday',0) or (offset==0 and local.hour<config.get('hour',20)):continue
+            key=kind+':'+day.isoformat()
+            if Record.objects.filter(guild=g,kind='job',key=key).exists():continue
+            yield kind,key,day,at,config

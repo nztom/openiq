@@ -46,10 +46,13 @@ class DiscordTicketTests(TestCase):
         with patch.dict('os.environ',{'ENABLE_DISCORD_DELIVERY':'1','DISCORD_BOT_TOKEN':'test'}):
             with patch('httpx.request',side_effect=httpx.ReadTimeout('lost')):
                 with self.assertRaises(httpx.ReadTimeout):deliver(item,True)
-            messages=Mock();messages.json.return_value=[{'id':'800','author':{'bot':True},'embeds':[{'footer':{'text':f'OpenIQ delivery {self.g.pk}:{item.pk}'}}]}]
+            messages=Mock();messages.json.return_value=[{'id':'800','author':{'bot':True,'id':'200'},'embeds':[{'footer':{'text':f'OpenIQ delivery {self.g.pk}:{item.pk}'}}]}]
+            bot=Mock();bot.json.return_value={'id':'200'}
+            verified=Mock();verified.json.return_value={'id':'800','author':{'id':'200'},'channel_id':'700'}
+            with patch('httpx.get',side_effect=[bot,messages,verified]):call_command('reconcile_delivery',item.pk,find=True,stdout=io.StringIO())
             response=Mock();response.json.return_value={'id':'800'}
-            with patch('httpx.request',side_effect=[messages,response]) as request:deliver(item,True)
-            self.assertEqual([c.args[0] for c in request.call_args_list],['GET','PATCH'])
+            with patch('httpx.request',return_value=response) as request:deliver(item,True)
+            self.assertEqual([c.args[0] for c in request.call_args_list],['PATCH'])
             item.refresh_from_db();self.assertEqual(item.status,'sent')
 
     def setUp(self):

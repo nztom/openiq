@@ -202,13 +202,14 @@ class RemoteRecoveryTests(TestCase):
         from .models import Outbox
         from .delivery import deliver
         item=Outbox.objects.create(guild=self.guild,key='history',channel='123',text='Body')
-        save(self.guild,'delivery_pending',{'channel':'123'},str(item.pk))
+        item.status='uncertain';item.save()
+        bot=Mock();bot.json.return_value={'id':'bot'}
         response=Mock(status_code=200);response.json.return_value=[]
-        with patch('httpx.request',return_value=response) as request,self.assertRaisesMessage(Invalid,'unresolved'):deliver(item,True)
-        self.assertEqual(request.call_args.args[0],'GET')
+        with patch('httpx.get',side_effect=[bot,response]),self.assertRaisesMessage(CommandError,'unresolved'):call_command('reconcile_delivery',item.pk,find=True)
         response.json.return_value=[{'id':str(i),'embeds':[]} for i in range(100)]
-        with patch('httpx.request',return_value=response) as request,self.assertRaisesMessage(Invalid,'reconciliation limit'):deliver(item,True)
-        self.assertEqual(request.call_count,100);self.assertIn('before',request.call_args.kwargs['params'])
+        with patch('httpx.get',side_effect=[bot]+[response]*100) as request,self.assertRaisesMessage(CommandError,'reconciliation limit'):call_command('reconcile_delivery',item.pk,find=True)
+        self.assertEqual(request.call_count,101);self.assertIn('before',request.call_args.kwargs['params'])
+        call_command('reconcile_delivery',item.pk,confirm_not_sent=True,stdout=io.StringIO())
         save(self.guild,'delivery',{'channel':'old','message_id':'old-message'},str(item.pk))
         response.json.return_value={'id':'new-message'}
         with patch('httpx.request',return_value=response) as request:deliver(item,True)
@@ -228,7 +229,7 @@ class RemoteRecoveryTests(TestCase):
         item.refresh_from_db();self.assertEqual(item.status,'preview')
         response=httpx.Response(429,headers={'Retry-After':'invalid'},request=httpx.Request('PATCH','https://discord.com'))
         with patch('httpx.request',return_value=response),self.assertRaises(httpx.HTTPStatusError):deliver(item,True)
-        self.assertEqual(Record.objects.get(kind='delivery_retry').data['attempts'],1)
+        item.refresh_from_db();self.assertEqual(item.attempts,1)
     def test_role_rejection_and_removed_obsolete_role(self):
         import httpx
         from unittest.mock import Mock
@@ -262,8 +263,8 @@ class RemoteRecoveryTests(TestCase):
         Outbox.objects.bulk_create([Outbox(guild=self.guild,key='batch-'+str(i),channel='123',text='Body') for i in range(101)])
         # Stop after the guild job, before any queued remote work.
         event=Mock();event.is_set.side_effect=[False,True]
-        with patch('guilds.management.commands.tick.deliver') as deliver:call_command('tick',stop_event=event,stdout=io.StringIO());deliver.assert_not_called()
-        with patch('guilds.management.commands.tick.deliver',return_value={'status':'preview'}) as deliver,patch('guilds.health.heartbeat') as heartbeat:
+        with patch('guilds.delivery.deliver') as deliver:call_command('tick',stop_event=event,stdout=io.StringIO());deliver.assert_not_called()
+        with patch('guilds.delivery.deliver',return_value={'status':'preview'}) as deliver,patch('guilds.health.heartbeat') as heartbeat:
             call_command('tick',stop_event=Event(),stdout=io.StringIO());self.assertEqual(deliver.call_count,100);self.assertTrue(heartbeat.called)
     def test_bot_closes_heartbeat_task_and_reports_offline(self):
         import asyncio

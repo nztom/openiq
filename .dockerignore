@@ -11,6 +11,7 @@ __pycache__
 *.sqlite3
 *.sqlite3-*
 .secret-key
+.backend-admin.json
 .env
 .env.*
 !.env.example

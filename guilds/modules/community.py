@@ -6,7 +6,9 @@ from .analytics import calculate
 def preview(g,key,content,channel='preview'):
     obj,_=Outbox.objects.get_or_create(key=f'{g.pk}:{key}',defaults={'guild':g,'text':content,'channel':channel})
     if obj.text!=content or obj.channel!=channel:
-        obj.text=content;obj.channel=channel;obj.status='preview';obj.save()
+        obj.text=content;obj.channel=channel
+        if obj.status not in ['sending','uncertain']:obj.status='preview';obj.attempts=0;obj.retry_at=None;obj.last_error=''
+        obj.save()
     return {'id':obj.pk,'text':obj.text,'status':obj.status}
 
 def handle(g,action,p,role,user):
@@ -14,7 +16,7 @@ def handle(g,action,p,role,user):
     if action=='cancel_reminder':
         r=get(g,'reminder',p['reminder'])
         if r.data['user']!=user.pk: raise PermissionDenied()
-        Outbox.objects.filter(guild=g,key=f'{g.pk}:reminder:{r.key}',status='preview').update(status='cancelled')
+        Outbox.objects.filter(guild=g,key=f'{g.pk}:reminder:{r.key}').exclude(status__in=['sent','sending','uncertain']).update(status='cancelled',retry_at=None)
         r.data['status']='cancelled'; r.save(); return public(r)
     if action=='ticket': return public(save(g,'ticket',{'user':user.pk,'category':text(p.get('category','General')),'subject':text(p['subject']),'text':text(p['text'],maximum=5000),'status':'open','replies':[]}))
     if action=='reply':
@@ -71,7 +73,7 @@ def handle(g,action,p,role,user):
             if e.data.get('accent'):embed['color']=int(e.data['accent'][1:],16)
             payload={'components':event_components(g,e),'embeds':[embed]}
             old=Record.objects.filter(guild=g,kind='message_components',key=str(result['id'])).first()
-            if old and old.data!=payload:Outbox.objects.filter(pk=result['id']).update(status='preview')
+            if old and old.data!=payload:Outbox.objects.filter(pk=result['id']).exclude(status__in=['sending','uncertain']).update(status='preview')
             save(g,'message_components',payload,str(result['id']))
         return result
     if action=='run_due':

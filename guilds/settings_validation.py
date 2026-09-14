@@ -3,6 +3,10 @@ from .modules.core import Invalid
 
 
 def validate(config,server=''):
+    if 'milestones' in config:
+        milestones=config['milestones']
+        if not isinstance(milestones,list) or len(milestones)>100 or any(isinstance(n,bool) or not isinstance(n,int) or not 1<=n<=10000000 for n in milestones):
+            raise Invalid('Milestones must be a list of at most 100 positive whole numbers up to 10000000')
     for key in ('channels','roles','tickets','welcome','command_permissions','capture','integrations','retention','weekly','sync','recruitment'):
         if key in config and not isinstance(config[key],dict):raise Invalid(key+' settings must be an object')
     def snowflake(value,optional=False):
@@ -19,6 +23,10 @@ def validate(config,server=''):
             snowflake(role)
             if tier in ('owner','admin') and str(role)==server:raise Invalid('Everyone cannot be an officer role')
     welcome=config.get('welcome',{})
+    if 'roles' in welcome:
+        labels=welcome['roles']
+        if not isinstance(labels,list) or len(labels)>25 or any(not isinstance(label,str) or not label.strip() or len(label)>80 for label in labels):
+            raise Invalid('Welcome roles must be a list of at most 25 nonempty labels of up to 80 characters')
     if 'role_ids' in welcome:
         if not isinstance(welcome['role_ids'],dict) or len(welcome['role_ids'])>25:raise Invalid('Configure at most 25 welcome roles')
         for label,role in welcome['role_ids'].items():
@@ -40,6 +48,8 @@ def validate(config,server=''):
     from zoneinfo import ZoneInfo,ZoneInfoNotFoundError
     for kind in ('weekly','sync'):
         schedule=config.get(kind,{})
+        if 'url' in schedule and (not isinstance(schedule['url'],str) or len(schedule['url'])>2000):
+            raise Invalid('Roster source URL must be text of up to 2000 characters')
         if 'enabled' in schedule and not isinstance(schedule['enabled'],bool):raise Invalid('Schedule enabled must be a boolean')
         for key,maximum in (('weekday',6),('hour',23)):
             if key in schedule and (isinstance(schedule[key],bool) or not isinstance(schedule[key],int) or not 0<=schedule[key]<=maximum):raise Invalid('Invalid schedule '+key)

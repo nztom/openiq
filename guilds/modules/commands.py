@@ -50,10 +50,7 @@ def dispatch(g,command,p,role,user):
             if not m: raise Invalid('Link your member first')
             p={**p,'member':m.key}
         if command=='sync roster' and 'names' not in p:
-            from .integrations import fetch_roster
-            url=g.config.get('sync',{}).get('url')
-            if not url:raise Invalid('Configure a verified roster source or provide reviewed names')
-            p={**p,'names':fetch_roster(url)}
+            raise Invalid('Use the shared service to prepare roster synchronization')
         return MODULES[module].handle(g,action,p,role,user)
     if command=='help':return {'commands':COMMANDS}
     if command=='guildstats':return calculate(g)['totals']

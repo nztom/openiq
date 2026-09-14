@@ -9,6 +9,8 @@ from .models import Guild,Access,Outbox,Record
 from .services import execute
 from .delivery import deliver
 from .modules.core import save
+from django.utils import timezone
+from datetime import timedelta
 
 
 class DeliverySchedulerTests(TestCase):
@@ -35,10 +37,10 @@ class DeliverySchedulerTests(TestCase):
         with patch('httpx.request',return_value=response) as request:
             self.tick();self.tick()
         self.assertEqual(request.call_count,1)
-        retry=Record.objects.get(kind='delivery_retry',key=str(item.pk))
-        self.assertGreater(retry.data['next_attempt'],time.time()+80)
-        self.assertFalse(Record.objects.filter(kind='delivery_pending').exists())
-        retry.data['next_attempt']=0;retry.save()
+        item.refresh_from_db()
+        self.assertEqual(item.status,'retry')
+        self.assertGreater(item.retry_at,timezone.now()+timedelta(seconds=80))
+        item.retry_at=timezone.now()-timedelta(seconds=1);item.save()
         response=Mock(status_code=200);response.json.return_value={'id':'456'}
         with patch('httpx.request',return_value=response) as request:self.tick()
         self.assertEqual(request.call_count,1)
@@ -46,10 +48,13 @@ class DeliverySchedulerTests(TestCase):
 
     def test_claim_blocks_concurrent_sender_and_expired_claim_recovers(self):
         item=Outbox.objects.create(guild=self.g,key='claim',channel='123',text='Once')
-        retry=save(self.g,'delivery_retry',{'lease_until':time.time()+100},str(item.pk))
+        item.status='sending';item.lease_until=timezone.now()+timedelta(seconds=100);item.save()
         with patch('httpx.request') as request:
-            self.assertEqual(deliver(item,True)['status'],'busy');request.assert_not_called()
-        retry.data['lease_until']=0;retry.save()
+            self.assertEqual(deliver(item,True)['status'],'sending');request.assert_not_called()
+        item.lease_until=timezone.now()-timedelta(seconds=1);item.save()
+        with patch('httpx.request') as request:
+            self.assertEqual(deliver(item,True,queued=True)['status'],'uncertain');request.assert_not_called()
+        call_command('reconcile_delivery',item.pk,confirm_not_sent=True,stdout=io.StringIO())
         response=Mock(status_code=200);response.json.return_value={'id':'456'}
         with patch('httpx.request',return_value=response) as request:deliver(item,True,queued=True);deliver(item,True,queued=True)
         self.assertEqual(request.call_count,1)
