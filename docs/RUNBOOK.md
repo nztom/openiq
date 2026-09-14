@@ -27,7 +27,9 @@ before officers rely on a particular installation.
    are `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`.
 5. Terminate TLS at your reverse proxy and route to loopback port 8765. Use
    `TRUST_PROXY=1` only when that proxy strips incoming forwarded headers and sets
-   its own. Keep the application port inaccessible from the public network.
+   its own. Keep `localhost` in `ALLOWED_HOSTS`: the image's loopback health
+   probe uses that internal host header. Keep the application port inaccessible
+   from the public network.
    Configure DNS/certificates and host firewall for the selected host.
    [SECURITY.md](SECURITY.md) covers HSTS, sessions, proxy trust and rotation.
 

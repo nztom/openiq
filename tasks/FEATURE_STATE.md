@@ -16,11 +16,10 @@ guild installation.
 | BDO capture and OCR | Synthetic fixtures validated | Current-patch traffic, regional screenshots, and sustained capture are unverified. |
 | Backup, restore, upgrade | Commands and Compose support implemented | Rehearse off-host backup, restore, and failed-upgrade recovery on the selected host. |
 | PostgreSQL | Adapter and integration tests exist | Run them against the selected PostgreSQL version and matching client tools. |
-| Deployment and operations | Runbook, readiness checks, and diagnostics implemented | Build/run the image and validate TLS, proxy, monitoring, alerts, shutdown, and capacity on the target Ubuntu host. |
+| Deployment and operations | Locally host-rehearsed on Ubuntu Desktop | Loopback TLS/proxy, readiness, persistence, scheduler startup, and graceful restart passed; public DNS/exposure, monitoring/alerts, capacity, and a guild-facing host remain unverified. |
 | Accessibility | Automated keyboard/layout/axe coverage | A person using a screen reader must complete the acceptance workflow. |
 
 Historical technical evidence remains in `docs/PR4_REVIEW.md`,
 `docs/PR4_INTEGRATION.md`, `docs/PRODUCTION_AUDIT.md`, and the operator-facing
 documents in `docs/`. New work must be tracked here, rather than adding another
 parallel checklist to those reports.
-
