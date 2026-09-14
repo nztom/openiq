@@ -1,7 +1,7 @@
 # Ubuntu host runtime and network rehearsal
 
 Priority: P1  
-Owner: unassigned  
+Owner: Codex  
 Depends on: 01-local-release-and-image-smoke
 
 ## Problem
