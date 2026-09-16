@@ -5,12 +5,12 @@ from discord import app_commands
 from asgiref.sync import sync_to_async
 from django.core.management.base import BaseCommand,CommandError
 from django.contrib.auth.models import User
-from guilds.models import Guild,Access
+from guilds.models import Guild,Access,Record
 from guilds.modules.commands import COMMANDS
 from guilds.discord_auth import role_for
 from guilds.services import execute
 from guilds.modules.core import Invalid
-from guilds.discord_responses import respond,error_message
+from guilds.discord_responses import respond,error_message,command_result
 from guilds.discord_commands import build_command,normalize
 
 class Command(BaseCommand):
@@ -77,7 +77,11 @@ class Command(BaseCommand):
                     if command=='link':
                         linked,_=User.objects.get_or_create(username='discord_'+arguments['discord_id'],defaults={'password':'!'})
                         arguments['user_id']=linked.pk
-                    return execute(user,g.pk,'commands','run',{'command':command,'arguments':arguments})
+                    result=execute(user,g.pk,'commands','run',{'command':command,'arguments':arguments})
+                    if command in {'gear','gearupdate','gearlist'}:
+                        member_names={record.key:record.data.get('name','Member') for record in Record.objects.filter(guild=g,kind='member')}
+                        return command_result(command,result,member_names)
+                    return command_result(command,result)
                 try:result=await run()
                 except Exception as exc:result=error_message(exc)
                 await respond(interaction,result)
