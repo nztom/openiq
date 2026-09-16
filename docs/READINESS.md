@@ -21,10 +21,10 @@ live installation checks remain outstanding.
   Django admin account, rotates its generated password on every web start, writes
   it to a private mode-0600 credential file, and can disable the account through
   configuration. Routine logs contain only the file path.
-- [x] **AUTH-02 — Discord-only member login.** Route the normal login entry point
-  directly to Discord OAuth in production. Keep password login available only
-  behind an explicit development setting; `/admin/` remains available to the
-  rotating backend administrator.
+- [x] **AUTH-02 — Discord-only member login.** Present the normal production
+  login landing page with a Discord OAuth entry point. Keep password login
+  available only behind an explicit development setting; `/admin/` remains
+  available to the rotating backend administrator.
 - [x] **AUTH-03 — Verified Discord guild onboarding.** Persist the OAuth guild
   claims in the server-side session and allow creation only for a Discord server
   where the user is owner, administrator, or has Manage Guild.
@@ -149,12 +149,12 @@ live installation checks remain outstanding.
   SQLite restore verifies checksums/integrity and runs Django/migration checks in
   staging before publishing the directory. Overwrite retains the previous
   directory. A real temporary-database backup/restore drill and regressions pass.
-- [x] **OPS-04 — Scheduled backup service.** Add an optional Compose service that
-  writes backups to a bind-mounted operator directory and document a restore
-  drill.
-  The `backups` profile runs immediate and periodic snapshots with configurable
-  retention and retry delay. See [backup operations](BACKUPS.md) for the isolated
-  restore drill. Scheduler tests pass; live Docker rehearsal remains LIVE-03.
+- [x] **OPS-04 — Scheduled backups.** Run backups from the web container only
+  when an operator mounts a backup directory, and document a restore drill.
+  The web container takes an immediate snapshot and then runs at the configured
+  interval (four hours by default), including a final snapshot on graceful
+  shutdown. See [backup operations](BACKUPS.md) for the isolated restore drill.
+  Scheduler tests pass; live Docker rehearsal remains LIVE-03.
 - [x] **OPS-05 — Readiness and diagnostics.** Separate liveness from readiness and
   report database access, migrations, writable storage, bot/scheduler heartbeat,
   and version without revealing secrets.

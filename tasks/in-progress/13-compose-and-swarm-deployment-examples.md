@@ -60,3 +60,5 @@ build and deployment instructions.
   examples/swarm-compose.yaml` pass on Linux.
 - The complete Django test suite passes on Linux. Windows command review and a
   test-Swarm-manager deployment remain required before closing this task.
+- The documentation sweep aligned the upgrade procedure and historical
+  readiness record with main-container backups and the `/backups` mount.

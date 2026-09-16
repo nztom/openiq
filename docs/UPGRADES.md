@@ -5,8 +5,10 @@ backup before upgrading. Rehearse the new revision against a restored copy first
 
 1. On the current revision, run `docker compose exec web python manage.py preflight`.
    Resolve missing owners or broken record links before proceeding.
-2. Create a backup with `docker compose exec web python manage.py backup --output /data/backups`.
-   Copy the completed snapshot off the application volume and verify its manifest.
+2. Create a backup with `docker compose exec web python manage.py backup --output /backups`.
+   This requires the operator-controlled `/backups` mount described in
+   [BACKUPS.md](BACKUPS.md); verify its manifest and keep the completed snapshot
+   off the application data volume.
 3. Stop all writers, including optional profiles:
    `docker compose --profile jobs --profile discord down`.
    Do not use `down -v`. Record which profiles were enabled.
