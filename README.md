@@ -4,7 +4,7 @@
 
 A self-hosted guild-management application for Black Desert guilds. Django with SQLite or PostgreSQL powers independent domain modules; the browser UI uses HTML/CSS/JavaScript.
 
-**Status:** locally validated platform with fixtures, reviewed imports and optional external adapters. A calibrated TCP/PCAP decoder is implemented and tested with synthetic captures; its historical calibration is not verified against the current BDO patch. Discord/Twitch adapters require credentials and have not been exercised against live accounts. See the [feature state](tasks/FEATURE_STATE.md) and [task register](tasks/README.md) for precise boundaries and planned work.
+**Status:** locally validated platform with fixtures, reviewed imports and optional external adapters. A calibrated TCP/PCAP decoder is implemented and tested with synthetic captures; its historical calibration is not verified against the current BDO patch. The Discord bot has connected and synced commands on the Pi Swarm, while OAuth, delivery workflows, and Twitch still need live acceptance. See the [feature state](tasks/FEATURE_STATE.md) and [task register](tasks/README.md) for precise boundaries and planned work.
 
 See the [production runbook](docs/RUNBOOK.md) for Discord application setup, first-run onboarding and daily operations.
 
@@ -34,8 +34,9 @@ docker compose logs --tail=100 web
 # Enable the optional continuous scheduler (delivery follows its explicit switch).
 docker compose --profile jobs up -d
 
-# Start the Discord bot after setting its token and enabling delivery in .env.
-docker compose --profile discord up -d
+# Set RUN_DISCORD_BOT=1 in .env after setting its token and enabling delivery,
+# then restart web.
+docker compose up -d web
 
 # Stop containers while retaining data.
 docker compose down
@@ -137,10 +138,11 @@ No Discord messages have been sent. No bot has been connected.
 
 Discord OAuth needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_REDIRECT_URI` (default `http://127.0.0.1:8765/auth/discord/callback/`). Configure guild `server_id` and role IDs. User OAuth requests profile, guild-list and own guild-membership read scopes. Role refresh fails closed. In production, `/login/` presents a Discord sign-in landing page; password login is available only when `ALLOW_LOCAL_LOGIN=1`. Django's separate `/admin/` login remains available for the managed recovery administrator.
 
-The bot runs as its own Compose service with the `discord` profile. Set
-`DISCORD_BOT_TOKEN` and `ENABLE_DISCORD_DELIVERY=1`, then start the profile. It
-shares the persistent data volume, waits for the web service to be healthy,
-registers the command tree, and restarts independently. The default
+The bot runs as a supervised child of the `web` container. Set
+`DISCORD_BOT_TOKEN`, `ENABLE_DISCORD_DELIVERY=1`, and `RUN_DISCORD_BOT=1`, then
+restart `web`. It shares the exact SQLite database and signing-key context with
+the application, registers the command tree, and a bot failure restarts the
+container rather than leaving the website silently degraded. The default
 `DISCORD_SYNC_GLOBAL=1` publishes global commands. For a staging server, set it
 to `0` and set `DISCORD_SYNC_GUILD` to the numeric server ID for immediate,
 guild-scoped updates. The two sync modes are mutually exclusive. `deliver ID` only
@@ -189,8 +191,9 @@ and their correction history. Exports are private and exclude credentials.
 
 `/healthz/` checks web-process liveness. `/readyz/` and `python manage.py diagnostics`
 check database access, migrations, writable storage and optional process heartbeats.
-Set `REQUIRED_PROCESSES=scheduler,bot` when those services are enabled; a heartbeat
-older than two minutes fails readiness. Set `OPENIQ_VERSION` to the deployed commit
+Set `REQUIRED_PROCESSES=scheduler` when the scheduler profile is enabled. The web
+entrypoint automatically requires the bot heartbeat when `RUN_DISCORD_BOT=1`; a
+heartbeat older than two minutes fails readiness. Set `OPENIQ_VERSION` to the deployed commit
 or release. Reports contain status flags rather than credentials or data paths.
 
 Owners can set `retention` through the settings API with `capture_days`,

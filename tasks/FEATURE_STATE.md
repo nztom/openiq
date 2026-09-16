@@ -1,6 +1,6 @@
 # Feature state
 
-Last reviewed: 2026-09-14.
+Last reviewed: 2026-09-16.
 
 OpenIQ is a self-hosted, small-guild Django application. The local release gate
 validates its offline workflows using disposable storage, synthetic OCR/packet
@@ -12,11 +12,11 @@ guild installation.
 | --- | --- | --- |
 | Core guild workflows | Locally validated | A real officer/member event and war still need acceptance. |
 | Access, privacy, and settings | Locally validated after PR #4 reconciliation | Continue regression coverage as new response shapes are added. |
-| Discord/OAuth/delivery | Implemented with controlled mocks | Staging credentials, permissions, restarts, and ambiguous remote outcomes need live validation. |
+| Discord/OAuth/delivery | Bot connected and global commands synced on the Pi Swarm; workflow behavior remains mock-validated | Staging permissions, command use, restarts, and ambiguous remote outcomes need live validation. |
 | BDO capture and OCR | Synthetic fixtures validated | Current-patch traffic, regional screenshots, and sustained capture are unverified. |
 | Backup, restore, upgrade | Commands and Compose support implemented | Rehearse off-host backup, restore, and failed-upgrade recovery on the selected host. |
 | PostgreSQL | Adapter and integration tests exist | Run them against the selected PostgreSQL version and matching client tools. |
-| Deployment and operations | Locally host-rehearsed on Ubuntu Desktop | Loopback TLS/proxy, readiness, persistence, scheduler startup, and graceful restart passed; public DNS/exposure, monitoring/alerts, capacity, and a guild-facing host remain unverified. |
+| Deployment and operations | Pi Swarm deployment active; public proxy routing, backups, and embedded bot observed | Restore/failed-upgrade rehearsal, monitoring/alerts, capacity, and guild-facing acceptance remain unverified. |
 | Accessibility | Automated keyboard/layout/axe coverage | A person using a screen reader must complete the acceptance workflow. |
 
 Historical technical evidence remains in `docs/PR4_REVIEW.md`,

@@ -61,12 +61,14 @@ guilds may share a Discord server; set each guild's roles separately and select
 
 For staging, set `DISCORD_SYNC_GLOBAL=0` and `DISCORD_SYNC_GUILD=SERVER_ID`.
 Use global sync for a production installation when ready; do not enable both.
-Set `ENABLE_DISCORD_DELIVERY=1` only after reviewing destinations and permissions.
+Set `ENABLE_DISCORD_DELIVERY=1` and `RUN_DISCORD_BOT=1` only after reviewing
+destinations and permissions. The bot runs inside `web`; restart that service
+after changing either setting.
 
 ```sh
 docker compose exec web python manage.py bot_diagnostics --guild GUILD_ID
-docker compose --profile discord --profile jobs up -d
-docker compose logs --tail=100 bot scheduler
+docker compose --profile jobs up -d
+docker compose logs --tail=100 web scheduler
 ```
 
 ## Local release smoke
@@ -78,7 +80,7 @@ profile. It does not contact Discord or prove TLS/proxy behavior.
 
 ```sh
 docker build --pull --no-cache --tag openiq:local .
-docker compose --env-file .env.example --profile jobs --profile discord config --quiet
+docker compose --env-file .env.example --profile jobs config --quiet
 
 # Use a unique project name and unused local port. These settings are only for
 # the disposable local check; production requires HTTPS and Discord settings.
@@ -99,9 +101,9 @@ docker compose --project-name openiq-smoke ps
 docker compose --project-name openiq-smoke down --volumes
 ```
 
-The configuration command validates every optional profile. The scheduler
-runtime is safe to start locally; Discord delivery requires dedicated staging
-credentials and is covered by the Discord staging task. Backups require an
+The configuration command validates the optional scheduler profile. The
+embedded Discord bot requires dedicated staging credentials and is covered by
+the Discord staging task. Backups require an
 operator-created directory mounted into the web container and an actual restore
 drill, so they are covered by the host and backup rehearsal tasks rather than
 this smoke check.
@@ -110,8 +112,9 @@ this smoke check.
 server ID. Settings reports local configuration, last capture acknowledgement,
 process heartbeats and the delivery queue; ?configured? does not prove that an
 external provider is reachable. `/healthz/` reports web liveness. `/readyz/`
-checks database, migrations and storage; `REQUIRED_PROCESSES=bot,scheduler` also
-checks their heartbeats. Keep that setting consistent with enabled profiles.
+checks database, migrations and storage. `RUN_DISCORD_BOT=1` automatically
+requires the embedded bot heartbeat; set `REQUIRED_PROCESSES=scheduler` when
+the scheduler profile is enabled.
 
 ## Operate and recover
 
@@ -166,9 +169,9 @@ messages may lack a footer marker, so use their explicit message IDs.
 ## Shutdown and installation acceptance
 
 ```sh
-docker compose --profile discord --profile jobs --profile backups stop
+docker compose --profile jobs stop
 # Or remove containers while preserving the named volume:
-docker compose --profile discord --profile jobs --profile backups down
+docker compose --profile jobs down
 ```
 
 Do not add `--volumes` unless intentionally destroying the saved installation.

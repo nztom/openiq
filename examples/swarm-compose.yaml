@@ -8,6 +8,7 @@ services:
       DATABASE_PATH: /data/db.sqlite3
       SECRET_KEY_FILE: /run/secrets/openiq_secret_key
       DISCORD_CLIENT_SECRET_FILE: /run/secrets/openiq_discord_client_secret
+      DISCORD_BOT_TOKEN_FILE: /run/secrets/openiq_discord_bot_token
       DEBUG: "${DEBUG:-0}"
       HTTPS: "${HTTPS:-1}"
       TRUST_PROXY: "${TRUST_PROXY:-1}"
@@ -15,6 +16,10 @@ services:
       CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:?Set the public HTTPS origin}"
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
       DISCORD_REDIRECT_URI: "${DISCORD_REDIRECT_URI:-}"
+      ENABLE_DISCORD_DELIVERY: "${ENABLE_DISCORD_DELIVERY:-0}"
+      RUN_DISCORD_BOT: "${RUN_DISCORD_BOT:-0}"
+      DISCORD_SYNC_GLOBAL: "${DISCORD_SYNC_GLOBAL:-1}"
+      DISCORD_SYNC_GUILD: "${DISCORD_SYNC_GUILD:-}"
       ENABLE_BACKEND_ADMIN: "${ENABLE_BACKEND_ADMIN:-0}"
       BACKUP_OUTPUT: /backups
       BACKUP_RESTORE_SOURCE: /backups
@@ -26,6 +31,8 @@ services:
         target: openiq_secret_key
       - source: openiq_discord_client_secret
         target: openiq_discord_client_secret
+      - source: openiq_discord_bot_token
+        target: openiq_discord_bot_token
     volumes:
       # This volume is deliberately local: never put SQLite directly on NFS.
       - openiq-data:/data
@@ -66,3 +73,6 @@ secrets:
   openiq_discord_client_secret:
     external: true
     name: ${OPENIQ_DISCORD_CLIENT_SECRET_SECRET:-openiq_discord_client_secret}
+  openiq_discord_bot_token:
+    external: true
+    name: ${OPENIQ_DISCORD_BOT_TOKEN_SECRET:-openiq_discord_bot_token}
