@@ -56,6 +56,10 @@ services:
       TWITCH_ACCESS_TOKEN: "${TWITCH_ACCESS_TOKEN:-}"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-}"
       OLLAMA_URL: "${OLLAMA_URL:-http://127.0.0.1:11434}"
+      BACKUP_OUTPUT: "${BACKUP_OUTPUT:-/backups}"
+      BACKUP_INTERVAL: "${BACKUP_INTERVAL:-14400}"
+      BACKUP_KEEP: "${BACKUP_KEEP:-7}"
+      BACKUP_TIMEOUT: "${BACKUP_TIMEOUT:-120}"
     volumes:
       - openiq-data:/data
     restart: unless-stopped
@@ -78,30 +82,6 @@ services:
         condition: service_healthy
     healthcheck:
       disable: true
-    restart: unless-stopped
-  backup:
-    image: openiq:local
-    profiles: [backups]
-    command: [python, manage.py, backup_scheduler, --output, /backups, --interval, "${BACKUP_INTERVAL:-86400}", --keep, "${BACKUP_KEEP:-7}", --timeout, "${BACKUP_TIMEOUT:-120}"]
-    environment:
-      <<: [*database, *runtime]
-      OPENIQ_SERVICE: backup
-      RUN_MIGRATIONS: "0"
-      SEED_DEMO: "0"
-      RUN_BACKEND_ADMIN_SETUP: "0"
-    volumes:
-      - openiq-data:/data
-      - type: bind
-        source: "${BACKUP_DIRECTORY:-./backups}"
-        target: /backups
-        bind:
-          create_host_path: false
-    depends_on:
-      web:
-        condition: service_healthy
-    healthcheck:
-      disable: true
-    stop_grace_period: 150s
     restart: unless-stopped
   bot:
     image: openiq:local

@@ -8,6 +8,16 @@ from django.test import SimpleTestCase
 
 
 class BackupSchedulerTests(SimpleTestCase):
+    def test_default_interval_is_four_hours(self):
+        stop = Mock()
+        stop.is_set.side_effect = [False, True]
+        module = 'guilds.management.commands.backup_scheduler.'
+        with patch(module + 'threading.Event', return_value=stop), \
+                patch(module + 'signal.signal', return_value=signal.SIG_DFL), \
+                patch(module + 'call_command'):
+            call_command('backup_scheduler', output=Path('backups'))
+        self.assertEqual(stop.wait.call_args_list, [((14400,),)])
+
     def test_invalid_limits_do_not_start(self):
         for name in ('interval', 'keep', 'timeout'):
             with self.subTest(name=name), self.assertRaises(CommandError):
