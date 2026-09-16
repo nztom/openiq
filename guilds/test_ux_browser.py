@@ -27,6 +27,7 @@ class DashboardUXTests(StaticLiveServerTestCase):
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.context.add_cookies([{'name': 'sessionid', 'value': self.client.cookies['sessionid'].value, 'url': self.live_server_url}])
                 page.goto(self.live_server_url)
+                self.assertTrue(page.get_by_role('link', name='OpenIQ on GitHub').last.is_visible())
                 history = page.get_by_role('button', name='History', exact=True)
                 history.focus()
                 page.keyboard.press('Enter')
