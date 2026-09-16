@@ -1,7 +1,7 @@
 # Backup, restore, and upgrade rehearsal
 
 Priority: P1  
-Owner: unassigned  
+Owner: Codex  
 Depends on: 02-production-host-rehearsal
 
 ## Problem
@@ -25,4 +25,3 @@ on the selected storage and host configuration.
 
 Use disposable representative data and retain the rehearsal record without
 committing private backup contents.
-
