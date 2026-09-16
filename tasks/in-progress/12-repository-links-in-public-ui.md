@@ -40,9 +40,9 @@ the primary application interface.
 
 ## Implementation status
 
-- Added descriptive GitHub links to the login page and dashboard sidebar, both
-  opening safely in a separate tab.
+- Added descriptive GitHub links to the login page, dashboard sidebar, and
+  always-visible dashboard footer, all opening safely in a separate tab.
 - Added Django response coverage for both rendered pages and external-link
-  protections.
+  protections, plus a mobile browser assertion for the footer link.
 - `./.venv/bin/python manage.py test` passes on Linux. Windows validation
   remains required before a cross-platform release.
