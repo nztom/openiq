@@ -1,12 +1,14 @@
 # Scheduled backups and restore drill
 
-The optional `backups` Compose profile runs the existing online backup command
-immediately on startup, then waits `BACKUP_INTERVAL` seconds after each attempt
-(default 86400). It retains `BACKUP_KEEP` completed snapshots (default 7).
-Failures produce an error in container logs and retry at the next interval;
-monitor both those logs and the age of the newest completed snapshot. Restarting
-the service makes another snapshot immediately. Run only one scheduler per output
-directory. SQLite is currently the supported snapshot backend.
+The web container starts the existing backup scheduler only when
+`BACKUP_OUTPUT` exists as a directory inside the container. Its default is
+`/backups`, so backups are disabled until an operator explicitly mounts a
+writable backup directory there. Once enabled, it runs immediately on startup,
+then waits `BACKUP_INTERVAL` seconds after each attempt (default 14400, or four
+hours). It retains `BACKUP_KEEP` completed snapshots (default 7). Failures
+produce an error in the web container logs and retry at the next interval;
+monitor both those logs and the age of the newest completed snapshot. SQLite is
+currently the supported snapshot backend.
 
 On the Linux host, prepare a private directory writable by container UID 10001:
 
@@ -14,24 +16,40 @@ On the Linux host, prepare a private directory writable by container UID 10001:
 sudo install -d -m 700 -o 10001 -g 10001 /srv/openiq-backups
 ```
 
-Set `BACKUP_DIRECTORY=/srv/openiq-backups` in `.env`, then run:
+Mount it into the web container in an operator-owned Compose override (for
+example `compose.backups.yaml`):
 
 ```sh
-docker compose --profile backups up -d --build
-docker compose logs backup
+services:
+  web:
+    volumes:
+      - /srv/openiq-backups:/backups
+```
+
+Set `BACKUP_OUTPUT=/backups` (the default), then run:
+
+```sh
+docker compose -f compose.yaml -f compose.backups.yaml up -d --build
+docker compose logs web
 ```
 
 The bind source must already exist. Backups are outside the database volume;
 copy them to separate storage for protection against host loss. They contain
-private guild data and the signing key. Do not commit them to Git. The service
-does not migrate, seed data, or rotate the backend administrator. Its shared
-database connection settings match the web service. If configuring `SECRET_KEY`
-directly on web, supply the identical value to backup as well.
+private guild data and the signing key. Do not commit them to Git. The web
+container creates backups only after its normal migrations and backend-admin
+setup; its database settings and signing key are already shared by both tasks.
 
 `BACKUP_TIMEOUT` bounds the SQLite snapshot attempt (default 120 seconds). Keep
 Compose's `stop_grace_period` longer than that timeout so an active snapshot can
 finish on shutdown. SIGTERM interrupts the interval wait; it does not cancel an
 active snapshot. Retention applies only after a successful snapshot.
+
+For the Pi Swarm deployment, `/data` is node-local and `/backups` is NAS-backed.
+When a replacement task receives an empty `/data`, it restores the newest
+verified snapshot from `/backups` before OpenIQ starts. This accepts the backup
+interval as the recovery-point objective after an ungraceful node failure. On a
+graceful stop, OpenIQ stops its web process, waits for an active scheduled
+backup, then takes one final snapshot before exiting.
 
 ## Isolated restore drill (SQLite)
 

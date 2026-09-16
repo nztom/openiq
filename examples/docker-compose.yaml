@@ -1,0 +1,38 @@
+name: openiq
+
+services:
+  web:
+    build: ..
+    image: ${OPENIQ_IMAGE:-openiq:local}
+    ports:
+      - "${OPENIQ_BIND:-127.0.0.1}:${OPENIQ_PORT:-8765}:8000"
+    environment:
+      OPENIQ_SERVICE: web
+      OPENIQ_DATA_DIR: /data
+      DATABASE_BACKEND: sqlite
+      DATABASE_PATH: /data/db.sqlite3
+      DEBUG: "${DEBUG:-0}"
+      HTTPS: "${HTTPS:-1}"
+      TRUST_PROXY: "${TRUST_PROXY:-0}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:-}"
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
+      DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
+      DISCORD_REDIRECT_URI: "${DISCORD_REDIRECT_URI:-http://127.0.0.1:8765/auth/discord/callback/}"
+      ENABLE_BACKEND_ADMIN: "${ENABLE_BACKEND_ADMIN:-0}"
+      BACKUP_OUTPUT: /backups
+      BACKUP_INTERVAL: "${BACKUP_INTERVAL:-14400}"
+      BACKUP_KEEP: "${BACKUP_KEEP:-7}"
+      BACKUP_TIMEOUT: "${BACKUP_TIMEOUT:-120}"
+    volumes:
+      - openiq-data:/data
+      - type: bind
+        source: "${BACKUP_HOST_DIRECTORY:-./backups}"
+        target: /backups
+        bind:
+          create_host_path: false
+    stop_grace_period: 5m
+    restart: unless-stopped
+
+volumes:
+  openiq-data:

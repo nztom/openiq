@@ -77,7 +77,7 @@ profile. It does not contact Discord or prove TLS/proxy behavior.
 
 ```sh
 docker build --pull --no-cache --tag openiq:local .
-docker compose --env-file .env.example --profile jobs --profile discord --profile backups config --quiet
+docker compose --env-file .env.example --profile jobs --profile discord config --quiet
 
 # Use a unique project name and unused local port. These settings are only for
 # the disposable local check; production requires HTTPS and Discord settings.
@@ -100,10 +100,10 @@ docker compose --project-name openiq-smoke down --volumes
 
 The configuration command validates every optional profile. The scheduler
 runtime is safe to start locally; Discord delivery requires dedicated staging
-credentials and is covered by the Discord staging task. The backup profile
-requires an operator-created backup directory and an actual restore drill, so
-it is covered by the host and backup rehearsal tasks rather than this smoke
-check.
+credentials and is covered by the Discord staging task. Backups require an
+operator-created directory mounted into the web container and an actual restore
+drill, so they are covered by the host and backup rehearsal tasks rather than
+this smoke check.
 
 `GUILD_ID` is OpenIQ's numeric database ID from the dashboard API, not the Discord
 server ID. Settings reports local configuration, last capture acknowledgement,
@@ -115,9 +115,10 @@ checks their heartbeats. Keep that setting consistent with enabled profiles.
 ## Operate and recover
 
 - **Backups:** prepare the operator-owned backup directory for container UID
-  10001, enable the `backups` profile and perform the isolated restore drill in
-  [BACKUPS.md](BACKUPS.md). Keep a protected off-host copy including the signing
-  key. A successful scheduled heartbeat is not a substitute for a restore drill.
+  10001, mount it at `BACKUP_OUTPUT` (default `/backups`) in the web container,
+  and perform the isolated restore drill in [BACKUPS.md](BACKUPS.md). Keep a
+  protected off-host copy including the signing key. A successful scheduled
+  heartbeat is not a substitute for a restore drill.
 - **Capture/imports:** follow [CAPTURE_HANDOFF.md](CAPTURE_HANDOFF.md). Use
   `verify_imports` for synthetic compatibility, then validate current regional
   game samples. Pairing credentials expire and are scoped to one live session.

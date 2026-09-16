@@ -35,7 +35,7 @@ def main():
         run('Packet fixtures',[python,'scripts/verify_packets.py'])
         for source in sorted((ROOT/'static').glob('*.js')):run('JavaScript '+source.name,['node','--check',str(source)])
         compose=[options.compose] if options.compose else ['docker','compose']
-        run('Compose configuration',[*compose,'--env-file','.env.example','--profile','jobs','--profile','discord','--profile','backups','config','--quiet'])
+        run('Compose configuration',[*compose,'--env-file','.env.example','--profile','jobs','--profile','discord','config','--quiet'])
         environment['ALLOW_LOCAL_LOGIN']='1'
         if run('Disposable database migration',[python,'manage.py','migrate','--noinput']) and run('Disposable browser fixtures',[python,'manage.py','seed_demo']):
             with socket.socket() as port_socket:port_socket.bind(('127.0.0.1',0));port=port_socket.getsockname()[1]

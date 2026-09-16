@@ -10,6 +10,10 @@ See the [production runbook](docs/RUNBOOK.md) for Discord application setup, fir
 
 ## Run with Docker
 
+For the compact single-host Compose example and the production Swarm stack
+example, see [Docker and Swarm deployment](docs/DEPLOYMENT.md). Both examples
+are credential-free templates; keep their copied environment files private.
+
 ```bash
 cd /home/user/src/openiq
 cp .env.example .env
@@ -223,8 +227,8 @@ snapshot and retains the newest requested count. Directories use mode 0700 and
 files use 0600. Backups contain private guild data and credentials; store them in
 an operator-controlled location outside Git and copy them off the application
 disk. External Discord/Twitch secrets supplied through environment variables
-need separate operator backups. The optional Compose `backups` profile schedules
-snapshots to a host directory; see [backup operations and restore drill](docs/BACKUPS.md).
+need separate operator backups. The web container schedules snapshots only when
+an operator mounts its backup directory; see [backup operations and restore drill](docs/BACKUPS.md).
 The same guide documents the checked, staged `restore` command and its offline
 overwrite/recovery requirements.
 
