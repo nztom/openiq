@@ -43,6 +43,19 @@ class AdapterTests(TestCase):
             response=self.client.get('/login/')
             self.assertEqual(response.status_code,200)
             self.assertContains(response,'Sign in with Discord')
+            self.assertContains(response,'View OpenIQ on GitHub')
+            self.assertContains(response,'https://github.com/nztom/openiq')
+
+    def test_dashboard_links_to_the_repository(self):
+        user=User.objects.create_user('repository-link-owner')
+        guild=Guild.objects.create(name='Repository Link Guild')
+        Access.objects.create(user=user,guild=guild,role='owner')
+        self.client.force_login(user)
+        response=self.client.get('/')
+        self.assertEqual(response.status_code,200)
+        self.assertContains(response,'OpenIQ on GitHub')
+        self.assertContains(response,'https://github.com/nztom/openiq')
+        self.assertContains(response,'rel="noopener noreferrer"')
     def test_roster_fetch_allowlist_rate_limit_and_empty_page(self):
         response=Mock(status_code=200,text=HTML)
         with patch('httpx.get',return_value=response) as request:
