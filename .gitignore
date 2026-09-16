@@ -10,6 +10,8 @@ staticfiles/
 *.sqlite3-*
 .env.*
 !.env.example
+examples/compose.env
+private/
 .coverage*
 !.coveragerc
 htmlcov/

@@ -10,6 +10,10 @@ See the [production runbook](docs/RUNBOOK.md) for Discord application setup, fir
 
 ## Run with Docker
 
+For the compact single-host Compose example and the production Swarm stack
+example, see [Docker and Swarm deployment](docs/DEPLOYMENT.md). Both examples
+are credential-free templates; keep their copied environment files private.
+
 ```bash
 cd /home/user/src/openiq
 cp .env.example .env

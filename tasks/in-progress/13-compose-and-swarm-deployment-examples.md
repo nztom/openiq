@@ -48,3 +48,15 @@ build and deployment instructions.
 - Validate Swarm-stack parsing against a local or test Swarm manager.
 - Review the documented shell commands on Linux and Windows-compatible Docker
   environments.
+
+## Implementation status
+
+- Added credential-free single-host Compose and Swarm stack examples, an
+  ignored Compose environment-file destination, and deployment documentation
+  covering image build/push, secrets, backup restore, proxy routing, and
+  upgrade checks.
+- `docker compose --env-file examples/compose.env.example -f
+  examples/docker-compose.yaml config --quiet` and `docker stack config -c
+  examples/swarm-compose.yaml` pass on Linux.
+- The complete Django test suite passes on Linux. Windows command review and a
+  test-Swarm-manager deployment remain required before closing this task.

@@ -1,0 +1,68 @@
+services:
+  web:
+    image: ${OPENIQ_IMAGE:?Set OPENIQ_IMAGE to an immutable registry image}
+    environment:
+      OPENIQ_SERVICE: web
+      OPENIQ_DATA_DIR: /data
+      DATABASE_BACKEND: sqlite
+      DATABASE_PATH: /data/db.sqlite3
+      SECRET_KEY_FILE: /run/secrets/openiq_secret_key
+      DISCORD_CLIENT_SECRET_FILE: /run/secrets/openiq_discord_client_secret
+      DEBUG: "${DEBUG:-0}"
+      HTTPS: "${HTTPS:-1}"
+      TRUST_PROXY: "${TRUST_PROXY:-1}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:?Set the public hostname and localhost}"
+      CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS:?Set the public HTTPS origin}"
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
+      DISCORD_REDIRECT_URI: "${DISCORD_REDIRECT_URI:-}"
+      ENABLE_BACKEND_ADMIN: "${ENABLE_BACKEND_ADMIN:-0}"
+      BACKUP_OUTPUT: /backups
+      BACKUP_RESTORE_SOURCE: /backups
+      BACKUP_INTERVAL: "${BACKUP_INTERVAL:-14400}"
+      BACKUP_KEEP: "${BACKUP_KEEP:-7}"
+      BACKUP_TIMEOUT: "${BACKUP_TIMEOUT:-120}"
+    secrets:
+      - source: openiq_secret_key
+        target: openiq_secret_key
+      - source: openiq_discord_client_secret
+        target: openiq_discord_client_secret
+    volumes:
+      # This volume is deliberately local: never put SQLite directly on NFS.
+      - openiq-data:/data
+      # This host path must be a NAS mount present on every eligible node.
+      - type: bind
+        source: "${BACKUP_HOST_DIRECTORY:?Set the NAS-mounted backup path}"
+        target: /backups
+        bind:
+          create_host_path: false
+    networks:
+      - proxy
+    stop_grace_period: 5m
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.openiq_data == true
+      update_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
+        delay: 5s
+
+volumes:
+  openiq-data:
+    driver: local
+
+networks:
+  proxy:
+    external: true
+    name: ${OPENIQ_PROXY_NETWORK:-edge}
+
+secrets:
+  openiq_secret_key:
+    external: true
+    name: ${OPENIQ_SECRET_KEY_SECRET:-openiq_secret_key}
+  openiq_discord_client_secret:
+    external: true
+    name: ${OPENIQ_DISCORD_CLIENT_SECRET_SECRET:-openiq_discord_client_secret}
