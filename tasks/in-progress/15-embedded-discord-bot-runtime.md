@@ -54,3 +54,6 @@ service's exact database and signing-key context.
 - Added the `RUN_DISCORD_BOT=1` opt-in. The web entrypoint starts the bot after
   setup, includes its heartbeat in readiness, restarts the container if the bot
   exits unexpectedly, and stops it before the final backup.
+- The Pi Swarm deployment now runs the bot in `openiq_web`; the bot connected
+  and completed global command synchronization. Operator documentation and both
+  deployment examples now use the embedded runtime and Docker secret file.

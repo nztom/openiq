@@ -41,9 +41,9 @@ live installation checks remain outstanding.
 
 ## 2. Discord bot
 
-- [x] **BOT-01 — Compose bot service and secrets.** Add a long-running bot service
-  with shared persistent data, health/restart behavior, Discord environment
-  wiring, and an explicit switch controlling outbound delivery.
+- [x] **BOT-01 — Embedded bot runtime and secrets.** Run one supervised bot in
+  the web container so it shares SQLite storage and signing-key context, with
+  restart behavior, secret-file wiring, and an explicit outbound-delivery switch.
 - [x] **BOT-02 — Development-guild command sync.** Support fast guild-scoped sync
   as well as global sync, document both modes, and report sync failures clearly.
 - [x] **BOT-03 — Native slash-command options.** Replace the generic JSON argument

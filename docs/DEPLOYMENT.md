@@ -50,6 +50,7 @@ docker network create --driver overlay edge
 docker node update --label-add openiq_data=true NODE_NAME
 docker secret create openiq_secret_key ./private/openiq_secret_key
 docker secret create openiq_discord_client_secret ./private/discord_client_secret
+docker secret create openiq_discord_bot_token ./private/discord_bot_token
 ```
 
 Create private Swarm deployment variables (for example
@@ -63,6 +64,10 @@ ALLOWED_HOSTS=openiq.example.com,localhost
 CSRF_TRUSTED_ORIGINS=https://openiq.example.com
 DISCORD_CLIENT_ID=YOUR_DISCORD_APPLICATION_ID
 DISCORD_REDIRECT_URI=https://openiq.example.com/auth/discord/callback/
+ENABLE_DISCORD_DELIVERY=0
+RUN_DISCORD_BOT=0
+DISCORD_SYNC_GLOBAL=1
+DISCORD_SYNC_GUILD=
 ```
 
 Build an immutable image and make it reachable by every Swarm node. Substitute
@@ -92,8 +97,11 @@ public HTTPS hostname after each deployment.
 
 Docker secrets are mounted as files and consumed through `*_FILE` environment
 variables. Keep ordinary non-secret settings in the private deployment
-environment file. The examples deliberately leave Discord bot delivery off;
-add a separately reviewed bot service only when that feature is required.
+environment file. The examples deliberately leave Discord delivery and the
+embedded bot off. To enable it, create the bot-token secret, set
+`ENABLE_DISCORD_DELIVERY=1` and `RUN_DISCORD_BOT=1`, and choose exactly one
+command-sync mode. The bot runs in `openiq_web`, so it always shares that
+service's node-local SQLite database.
 
 ## Upgrade and recovery checks
 

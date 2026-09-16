@@ -9,17 +9,20 @@ backup before upgrading. Rehearse the new revision against a restored copy first
    This requires the operator-controlled `/backups` mount described in
    [BACKUPS.md](BACKUPS.md); verify its manifest and keep the completed snapshot
    off the application data volume.
-3. Stop all writers, including optional profiles:
-   `docker compose --profile jobs --profile discord down`.
-   Do not use `down -v`. Record which profiles were enabled.
+3. Stop the application and optional scheduler together:
+   `docker compose --profile jobs down`. Do not use `down -v`. Record whether
+   `RUN_DISCORD_BOT` and the scheduler profile were enabled; the embedded bot
+   stops with `web` and the entrypoint takes its final backup.
 4. Pull the reviewed release (`git pull --ff-only` on the deployment branch),
    review changes to `.env.example`, and set `OPENIQ_VERSION` to the new commit.
    Run `docker compose build` and `docker compose config --quiet`.
 5. Start web first with `docker compose up -d web`. Its entrypoint validates
    configuration and runs migrations before Gunicorn. Inspect web logs and run
    `docker compose exec web python manage.py preflight`.
-6. Start the previously enabled profiles. Check `/readyz/`, operator diagnostics,
-   a known guild/war, and the age of the most recent backup before reopening access.
+6. Start `web` and the previously enabled scheduler profile. If
+   `RUN_DISCORD_BOT=1`, confirm the bot heartbeat in `/readyz/` and its gateway
+   connection in `web` logs. Check operator diagnostics, a known guild/war, and
+   the age of the most recent backup before reopening access.
 
 For rollback, stop all writers and rebuild the previously recorded commit. If
 migrations or new writes changed the data, restore the pre-upgrade snapshot with
