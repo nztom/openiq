@@ -48,3 +48,9 @@ service's exact database and signing-key context.
 - Compose and Swarm configuration validation.
 - Run relevant tests on Linux and Windows; validate container behaviour on the
   target Linux Swarm host.
+
+## Implementation status
+
+- Added the `RUN_DISCORD_BOT=1` opt-in. The web entrypoint starts the bot after
+  setup, includes its heartbeat in readiness, restarts the container if the bot
+  exits unexpectedly, and stops it before the final backup.

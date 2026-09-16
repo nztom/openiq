@@ -14,6 +14,10 @@ for secret_name in SECRET_KEY DATABASE_PASSWORD DISCORD_CLIENT_SECRET DISCORD_BO
 done
 
 data_dir=${OPENIQ_DATA_DIR:-/data}
+bot_pid=
+if [ "${RUN_DISCORD_BOT:-0}" = "1" ]; then
+    case ",${REQUIRED_PROCESSES:-}," in *,bot,*) ;; *) export REQUIRED_PROCESSES="${REQUIRED_PROCESSES:+${REQUIRED_PROCESSES},}bot";; esac
+fi
 restore_source=${BACKUP_RESTORE_SOURCE:-}
 if [ -n "$restore_source" ] && [ ! -e "$data_dir/db.sqlite3" ]; then
     snapshot=$(find "$restore_source" -maxdepth 1 -type d -name 'openiq-backup-*' -print 2>/dev/null | sort | tail -n 1)
@@ -38,6 +42,10 @@ if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
 fi
 if [ "${SEED_DEMO:-0}" = "1" ]; then
     python manage.py seed_demo
+fi
+if [ "${RUN_DISCORD_BOT:-0}" = "1" ]; then
+    python manage.py runbot &
+    bot_pid=$!
 fi
 if [ "${RUN_BACKEND_ADMIN_SETUP:-0}" = "1" ]; then
     python manage.py bootstrap_admin
@@ -72,15 +80,32 @@ stop() {
         kill -TERM "$backup_pid" 2>/dev/null || true
         wait "$backup_pid" 2>/dev/null || true
     fi
+    if [ -n "$bot_pid" ]; then
+        kill -TERM "$bot_pid" 2>/dev/null || true
+        wait "$bot_pid" 2>/dev/null || true
+    fi
     backup_now
 }
 trap 'stop; exit 0' INT TERM
 
 app_status=0
+while kill -0 "$app_pid" 2>/dev/null; do
+    if [ -n "$bot_pid" ] && ! kill -0 "$bot_pid" 2>/dev/null; then
+        wait "$bot_pid" || true
+        echo "Discord bot exited unexpectedly; stopping web process for restart." >&2
+        kill -TERM "$app_pid" 2>/dev/null || true
+        break
+    fi
+    sleep 1
+done
 wait "$app_pid" || app_status=$?
 if [ -n "$backup_pid" ]; then
     kill -TERM "$backup_pid" 2>/dev/null || true
     wait "$backup_pid" || true
+fi
+if [ -n "$bot_pid" ]; then
+    kill -TERM "$bot_pid" 2>/dev/null || true
+    wait "$bot_pid" || true
 fi
 backup_now
 exit "$app_status"
