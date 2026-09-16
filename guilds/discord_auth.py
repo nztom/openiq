@@ -7,7 +7,7 @@ from django.contrib.auth import login,logout
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.models import User
 from django.http import HttpResponseBadRequest
-from django.shortcuts import redirect
+from django.shortcuts import redirect,render
 from django.db import transaction
 from django.views.decorators.http import require_POST
 from guilds.models import Guild,Access
@@ -18,7 +18,7 @@ ADMINISTRATOR=0x8
 
 def login_entry(request):
     if settings.ALLOW_LOCAL_LOGIN:return LoginView.as_view()(request)
-    return redirect('/auth/discord/')
+    return render(request,'registration/discord_login.html')
 
 @require_POST
 def logout_entry(request):

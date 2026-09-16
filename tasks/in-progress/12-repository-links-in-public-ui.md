@@ -42,6 +42,8 @@ the primary application interface.
 
 - Added descriptive GitHub links to the login page, dashboard sidebar, and
   always-visible dashboard footer, all opening safely in a separate tab.
+- Production Discord authentication now presents the login page instead of
+  immediately redirecting, so the login-page link can actually be used.
 - Added Django response coverage for both rendered pages and external-link
   protections, plus a mobile browser assertion for the footer link.
 - `./.venv/bin/python manage.py test` passes on Linux. Windows validation
