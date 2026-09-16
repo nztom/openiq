@@ -37,3 +37,12 @@ the primary application interface.
 - Add focused UI/browser coverage for the public login and authenticated main
   interface.
 - Run the relevant test suite on Linux and Windows.
+
+## Implementation status
+
+- Added descriptive GitHub links to the login page and dashboard sidebar, both
+  opening safely in a separate tab.
+- Added Django response coverage for both rendered pages and external-link
+  protections.
+- `./.venv/bin/python manage.py test` passes on Linux. Windows validation
+  remains required before a cross-platform release.
