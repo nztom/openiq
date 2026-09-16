@@ -50,9 +50,10 @@ the file path. Disabling the managed account removes the file. It is regenerated
 on startup and does not need a separate backup. The `/admin/` account is for backend recovery, not member access.
 Demo seeding and member password login stay disabled in production.
 
-Open the HTTPS site and sign in with Discord. A server owner, administrator or
-user with Manage Guild can select a verified server, name the BDO guild and set
-its region. In Settings, configure owner/admin/member role IDs, channel
+Open the HTTPS site to reach the Discord sign-in landing page, then select
+**Sign in with Discord**. A server owner, administrator or user with Manage
+Guild can select a verified server, name the BDO guild and set its region. In
+Settings, configure owner/admin/member role IDs, channel
 destinations, ticket staff/categories, welcome selections and schedules. A user
 without a matching role does not automatically gain member access. Multiple BDO
 guilds may share a Discord server; set each guild's roles separately and select

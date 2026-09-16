@@ -135,7 +135,7 @@ No Discord messages have been sent. No bot has been connected.
 .venv/bin/python scripts/capture_desktop.py
 ```
 
-Discord OAuth needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_REDIRECT_URI` (default `http://127.0.0.1:8765/auth/discord/callback/`). Configure guild `server_id` and role IDs. User OAuth requests profile, guild-list and own guild-membership read scopes. Role refresh fails closed. Password login is available only when `ALLOW_LOCAL_LOGIN=1`; Django's separate `/admin/` login remains available for the managed recovery administrator.
+Discord OAuth needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_REDIRECT_URI` (default `http://127.0.0.1:8765/auth/discord/callback/`). Configure guild `server_id` and role IDs. User OAuth requests profile, guild-list and own guild-membership read scopes. Role refresh fails closed. In production, `/login/` presents a Discord sign-in landing page; password login is available only when `ALLOW_LOCAL_LOGIN=1`. Django's separate `/admin/` login remains available for the managed recovery administrator.
 
 The bot runs as its own Compose service with the `discord` profile. Set
 `DISCORD_BOT_TOKEN` and `ENABLE_DISCORD_DELIVERY=1`, then start the profile. It
@@ -217,8 +217,8 @@ Create a consistent online backup without stopping the services:
 
 ```bash
 python manage.py backup --output /path/to/private/backups --keep 7 --timeout 120
-# In Compose (copy snapshots off the data volume for disaster recovery):
-docker compose exec web python manage.py backup --output /data/backups --keep 7
+# In Compose, use the operator-mounted backup directory:
+docker compose exec web python manage.py backup --output /backups --keep 7
 ```
 
 Each timestamped snapshot includes `db.sqlite3`, the active `.secret-key`, and a
