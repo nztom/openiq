@@ -8,7 +8,7 @@ backup before upgrading. Rehearse the new revision against a restored copy first
 2. Create a backup with `docker compose exec web python manage.py backup --output /data/backups`.
    Copy the completed snapshot off the application volume and verify its manifest.
 3. Stop all writers, including optional profiles:
-   `docker compose --profile jobs --profile discord --profile backups down`.
+   `docker compose --profile jobs --profile discord down`.
    Do not use `down -v`. Record which profiles were enabled.
 4. Pull the reviewed release (`git pull --ff-only` on the deployment branch),
    review changes to `.env.example`, and set `OPENIQ_VERSION` to the new commit.

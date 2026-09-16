@@ -13,7 +13,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--output', required=True, type=Path)
-        parser.add_argument('--interval', type=int, default=86400)
+        parser.add_argument('--interval', type=int, default=14400)
         parser.add_argument('--keep', type=int, default=7)
         parser.add_argument('--timeout', type=int, default=120)
 
