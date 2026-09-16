@@ -62,6 +62,7 @@ services:
       BACKUP_TIMEOUT: "${BACKUP_TIMEOUT:-120}"
     volumes:
       - openiq-data:/data
+    stop_grace_period: 5m
     restart: unless-stopped
   scheduler:
     image: openiq:local

@@ -44,6 +44,13 @@ Compose's `stop_grace_period` longer than that timeout so an active snapshot can
 finish on shutdown. SIGTERM interrupts the interval wait; it does not cancel an
 active snapshot. Retention applies only after a successful snapshot.
 
+For the Pi Swarm deployment, `/data` is node-local and `/backups` is NAS-backed.
+When a replacement task receives an empty `/data`, it restores the newest
+verified snapshot from `/backups` before OpenIQ starts. This accepts the backup
+interval as the recovery-point objective after an ungraceful node failure. On a
+graceful stop, OpenIQ stops its web process, waits for an active scheduled
+backup, then takes one final snapshot before exiting.
+
 ## Isolated restore drill (SQLite)
 
 Use the same application revision and Python dependencies as the snapshot.

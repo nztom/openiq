@@ -31,8 +31,10 @@ committing private backup contents.
 2026-09-16: The main container now runs the backup scheduler only when its
 `BACKUP_OUTPUT` directory exists (default `/backups`), with a four-hour default
 interval. The separate Compose backup service has been removed. The Pi-cluster
-Swarm definition and Pi-side build/deploy script are in `/mnt/data/swarm/openiq`.
-Focused backup tests and the complete Python suite pass with 100% coverage.
+Swarm definition uses local runtime SQLite data, NAS snapshots, verified restore
+to an empty replacement node, and a final graceful-stop backup. Its Pi-side
+build/deploy script is in `/mnt/data/swarm/openiq`. Focused backup tests and the
+complete Python suite pass with 100% coverage.
 
 Remaining: build and deploy the ARM image on a Pi, then run the disposable
 off-host backup, isolated restore, and failed-upgrade recovery rehearsal.
