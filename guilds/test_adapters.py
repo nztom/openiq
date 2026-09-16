@@ -38,7 +38,10 @@ class AdapterTests(TestCase):
     def test_member_login_is_discord_only_unless_development_override_is_enabled(self):
         with override_settings(ALLOW_LOCAL_LOGIN=False):
             response=self.client.get('/login/')
-            self.assertRedirects(response,'/auth/discord/',fetch_redirect_response=False)
+            self.assertEqual(response.status_code,200)
+            self.assertContains(response,'Sign in with Discord')
+            self.assertContains(response,'View OpenIQ on GitHub')
+            self.assertContains(response,'https://github.com/nztom/openiq')
         with override_settings(ALLOW_LOCAL_LOGIN=True):
             response=self.client.get('/login/')
             self.assertEqual(response.status_code,200)
