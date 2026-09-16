@@ -1,7 +1,7 @@
 # Run the Discord bot in the web container
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
