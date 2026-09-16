@@ -1,7 +1,7 @@
 # Repository links in the public UI
 
 Priority: P3  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
