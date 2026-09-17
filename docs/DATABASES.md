@@ -7,7 +7,8 @@ the database-specific connection settings and maintenance operations.
 `DATABASE_BACKEND=sqlite` is the default and preserves existing data paths and
 SQLite IMMEDIATE transactions. `DATABASE_PATH` overrides the database file;
 otherwise local runs use `OPENIQ_DATA_DIR/db.sqlite3`, and Compose uses
-`/data/db.sqlite3`. All three Compose services receive the same database settings.
+`/data/db.sqlite3`. The root Compose services receive shared database settings; the compact
+examples use one web service with the embedded bot.
 No schema migration or data conversion is required for this abstraction.
 
 ## Adding a backend
@@ -27,8 +28,8 @@ No schema migration or data conversion is required for this abstraction.
 
 The base adapter rejects unsupported backup operations. Snapshot manifests now
 include the Django engine; existing SQLite filenames and format remain unchanged.
-Future restore code must treat old v1 manifests without an engine as SQLite and
-reject incompatible engines rather than assuming every snapshot is a SQLite file.
+Restore treats old v1 manifests without an engine as SQLite and rejects
+incompatible engines rather than assuming every snapshot is a SQLite file.
 
 ## PostgreSQL preparation
 
@@ -87,8 +88,10 @@ plan the cutover and acceptance window accordingly.
 
 ## Mutation locking
 
-`guilds.services.execute` runs inside `transaction.atomic` and updates the guild
-revision before reading mutable domain records. The ORM UPDATE takes SQLite's
+`guilds.services.execute` authorizes and prepares external reads before entering
+`commit`, which runs inside `transaction.atomic`, updates the guild revision,
+and rechecks access/configuration before applying prepared results or reading
+mutable domain records. The ORM UPDATE takes SQLite's
 writer lock or a PostgreSQL row lock, held to transaction end. Keep that write
 before domain reads; replacing it with an unlocked read risks lost updates.
 Cross-guild operations still require concurrency review on each new database.

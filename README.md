@@ -113,7 +113,8 @@ Records have a relational guild/kind/key envelope, unique constraints and module
 
 ## Optional integrations and tools
 
-No Discord messages have been sent. No bot has been connected.
+The bot has connected and synced commands on the Pi Swarm. End-to-end OAuth,
+delivery, and recovery acceptance remains tracked in the task register.
 
 ```bash
 # All registered commands are constructed without a network connection.
@@ -140,7 +141,11 @@ Discord OAuth needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_R
 
 The bot runs as a supervised child of the `web` container. Set
 `DISCORD_BOT_TOKEN`, `ENABLE_DISCORD_DELIVERY=1`, and `RUN_DISCORD_BOT=1`, then
-restart `web`. It shares the exact SQLite database and signing-key context with
+restart `web`. The root `compose.yaml` still has a legacy `discord` profile
+and does not forward the sync-mode variables to `web`; use the embedded-bot
+examples in [DEPLOYMENT.md](docs/DEPLOYMENT.md) when configuring command sync.
+Do not enable both bot runtimes. Task 15 tracks this configuration gap.
+The embedded bot shares the exact SQLite database and signing-key context with
 the application, registers the command tree, and a bot failure restarts the
 container rather than leaving the website silently degraded. The default
 `DISCORD_SYNC_GLOBAL=1` publishes global commands. For a staging server, set it
@@ -159,7 +164,19 @@ object. Large responses are private JSON attachments rather than truncated text.
 
 Twitch uses `TWITCH_CLIENT_ID` and `TWITCH_ACCESS_TOKEN`; without them the demo directory is explicitly labeled as fixture data.
 
-## Verification
+## Contributor checks
+
+Read the [task workflow](tasks/README.md) before starting work. For ordinary
+changes, run the relevant Django test modules and `python manage.py check`.
+Run `node --check static/app.js` when changing that file, and opt into browser
+tests for affected UI behavior. Documentation-only changes need link and
+command review, not the complete release gate. Application changes still need
+Linux and Windows validation before their task is completed.
+
+## Full release verification
+
+The full gate is a release diagnostic, not a prerequisite for every commit or
+PR. Its 100% coverage threshold remains unchanged.
 
 Install `requirements-dev.txt`, Tesseract, Node, Chromium (`python -m playwright install chromium`) and the pinned accessibility tool (`npm ci`). Run the complete offline gate with `python scripts/release_gate.py`; it uses disposable data and emits `release-report.json`. Docker Compose is required for configuration validation (a standalone executable can be supplied with `--compose PATH`). Live-host checks remain separate.
 
@@ -212,7 +229,7 @@ The output contains private guild data; the CLI refuses to overwrite an existing
 Database settings and maintenance operations use a pluggable backend layer;
 domain queries use Django ORM. SQLite remains the supported default. See
 [database extension guide](docs/DATABASES.md) for adapter contracts, PostgreSQL
-configuration scaffolding, and the remaining PostgreSQL integration work.
+configuration, native snapshot/restore tests, and deployment-specific validation.
 
 SQLite database: `db.sqlite3`; generated signing key: `.secret-key`. Both are excluded from Git. No credentials belong in source control.
 

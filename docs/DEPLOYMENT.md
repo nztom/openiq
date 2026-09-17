@@ -114,3 +114,14 @@ service's node-local SQLite database.
    restore message before accepting traffic.
 4. Rehearse the isolated restore process in [BACKUPS.md](BACKUPS.md) before
    relying on these recovery properties.
+
+## Scheduled jobs
+
+These compact examples do not start the application scheduler. The embedded
+bot and backup scheduler do not run reminder, recurrence, summary, roster-sync,
+or outbox jobs. For now, operators must run `python manage.py tick` in the web
+container when those jobs are needed; Discord sends still require explicit
+delivery enablement. Root single-host Compose separately offers the `jobs`
+profile. Do not copy that service into Swarm with an unconstrained local SQLite
+volume: it could use a different node's database. The supported Swarm runtime
+is tracked in [task 22](../tasks/todo/22-swarm-scheduled-work.md).

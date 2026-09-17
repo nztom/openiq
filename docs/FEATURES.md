@@ -16,7 +16,7 @@ this document remains the detailed capability matrix.
 | Community and roles | Structured recruitment, private tickets with reopen/transcripts, welcome role hierarchy checks and optional selection replacement | Actual channel overwrites, ticket recovery and role hierarchy |
 | Discord delivery | Native typed command catalog, persistent components, durable outbox claims, backoff and remote reconciliation | Staging acceptance; ambiguous outcomes require operator inspection |
 | Settings and UX | Validated nested forms, integration/heartbeat status, all-section empty states, mobile/keyboard and automated accessibility checks | Spoken screen-reader review and user acceptance |
-| Operations | SQLite/PostgreSQL snapshots, validated restore, backup scheduling, preflight, diagnostics, maintenance, retention and privacy controls | Target Linux shutdown/restart, TLS, off-host backup and restore rehearsal |
+| Operations | SQLite/PostgreSQL snapshots, validated restore, backup scheduling, preflight, diagnostics, maintenance, retention and privacy controls | Current restore/failed-upgrade rehearsal and scheduled-job runtime; basic host/TLS checks have passed |
 | Optional providers | Twitch adapter and configurable Ollama, with explicit per-guild switches | Real provider credentials/connectivity and output acceptance |
 
 ## Validation
@@ -37,4 +37,6 @@ The independent browser smoke script covers the complete war lifecycle.
 
 All OCR/packet fixtures are synthetic. No live Discord, Twitch, BDO capture, real
 war screenshot, target-host rehearsal or officer acceptance is claimed by these
-offline tests. See the unchecked tasks for the exact remaining launch work.
+offline tests. The deployed bot and public HTTPS host have separate live observations in
+[feature state](../tasks/FEATURE_STATE.md). See the task register for remaining
+launch work; historical unchecked boxes are not the backlog.
