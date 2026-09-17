@@ -1,7 +1,7 @@
 # Discord identity, bot, and command staging
 
 Priority: P1  
-Owner: unassigned
+Owner: nztom
 
 ## Problem
 
