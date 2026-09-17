@@ -54,3 +54,12 @@ this documentation task; each new code task explicitly requires both platforms.
 
 JavaScript syntax, both Compose configuration renders, 34 changed-document
 local links and Git whitespace checks passed.
+
+## Follow-up: remove documentation clutter
+
+Reopened 2026-09-17 at the user's request. Remove superseded PR reviews, audit
+reports and duplicate readiness/research inventories. Keep actionable findings
+in existing tasks, preserve useful compatibility provenance in contracts, and
+fix references in maintained documentation. Do not add another review report.
+Validation: repository Markdown links, removed-document references and whitespace;
+no application code changes or runtime tests are needed.
