@@ -40,11 +40,11 @@ boundaries, and contributor overhead.
 
 ## Outcome
 
-Completed 2026-09-17. [Review evidence](../../docs/REVIEW_2026-09-17.md)
-records four reproduced application defects, missing Swarm scheduling, and
-coordination notes for existing tasks. Added todo tasks 18–22 and corrected
+Initial review completed 2026-09-17 in [PR #8](https://github.com/nztom/openiq/pull/8).
+Four reproduced application defects and missing Swarm scheduling are recorded
+in todo tasks 18–22. Corrected
 current README, database, deployment, feature-state and workflow guidance.
-Historical READINESS no longer acts as a second backlog.
+The duplicate readiness checklist has since been removed.
 
 The existing suite passes on Ubuntu: 244 tests, 8 optional tests skipped. The
 autocomplete sandbox timeout does not reproduce outside the sandbox. Authorized
@@ -63,3 +63,35 @@ in existing tasks, preserve useful compatibility provenance in contracts, and
 fix references in maintained documentation. Do not add another review report.
 Validation: repository Markdown links, removed-document references and whitespace;
 no application code changes or runtime tests are needed.
+
+## Retained review evidence and coordination
+
+- Review base: `1c2f50cb593ef9aaf1682c6b318860b256b7ef92`. New bugs were
+  reproduced in temporary SQLite storage; their payloads/results remain in
+  tasks 18–21. The 244-test Ubuntu run skipped optional browser/PostgreSQL
+  tests; Windows, the full coverage gate and live mutations were not exercised.
+- Read-only live checks on 2026-09-17 returned 200 for HTTPS login, liveness and
+  readiness. Swarm reported web 1/1, version `6e827933e3be`, bot and backup
+  workers present, scheduler absent (task 22). The deployed image differed from
+  reviewed main; these checks did not establish restore or guild acceptance.
+- Task 15 coordination: root Compose still exposes the legacy bot profile and
+  forwards sync-mode variables only there, not to web. Enabling both runtimes
+  duplicates bots. Integration status still recommends removed bot/backup
+  profiles. Coordinate example changes with task 13; their active ownership
+  remains unchanged.
+- Tasks 06/13 coordination: live service history had multiple image digests
+  under one commit-style tag. Record the actual digest during rollback
+  rehearsal; a successful backup heartbeat does not prove restore works.
+- Task 16's historical autocomplete timeout was sandbox-specific: the isolated
+  check passed outside it in 0.010 seconds, as did the full suite.
+
+## Cleanup outcome
+
+Removed six obsolete reports/inventories, including the report added by this
+review. Retained compatibility provenance in the application contracts and
+updated the runbook, README and feature-state links. Future review evidence
+belongs in task records and PRs. Earlier narratives remain in Git history.
+Documentation-only follow-up; application code and running services are unchanged.
+
+Completed follow-up validation: all 32 repository-local Markdown links resolve,
+no Markdown references remain to removed files, and `git diff --check` passes.

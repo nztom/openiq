@@ -21,11 +21,6 @@ guild installation.
 | Portability and Critiq migration | Not implemented as user-facing import/export workflows | Tasks 11 and 14 cover instance transfer and Critiq XLSX import. |
 | Accessibility | Automated keyboard/layout/axe coverage | A person using a screen reader must complete the acceptance workflow. |
 
-Historical technical evidence remains in `docs/PR4_REVIEW.md`,
-`docs/PR4_INTEGRATION.md`, `docs/PRODUCTION_AUDIT.md`, and the operator-facing
-documents in `docs/`. New work must be tracked here, rather than adding another
-parallel checklist to those reports.
-
-The [2026-09-17 review](../docs/REVIEW_2026-09-17.md) records reproduced defects,
-current test evidence and read-only live deployment observations. That review
-links to tasks and is not a second backlog.
+Use the operator guides in `docs/` for setup and maintenance. Reproduction steps,
+validation evidence and follow-up work belong in the task register. Git and PR
+history retain earlier reviews; they are not maintained product documentation.

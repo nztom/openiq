@@ -2,8 +2,8 @@
 
 Read [tasks/README.md](tasks/README.md) and [tasks/FEATURE_STATE.md](tasks/FEATURE_STATE.md)
 before planning repository work. They are the canonical task register and
-feature-boundary record; historical audit reports in `docs/` are evidence, not
-an alternative backlog.
+feature-boundary record. Keep `docs/` for maintained guides and reference; put
+review findings and validation evidence in tasks and PRs, not separate reports.
 
 Task workflow:
 

@@ -56,7 +56,8 @@ A JSON array or newline-delimited objects:
 
 ## IKUSA text contract
 
-The public log-import frontend documented in the [research inventory](RESEARCH.md) provided this interoperable text shape:
+The publicly served IKUSA log-import frontend provided this interoperable text
+shape:
 
 ```text
 [23:59:58] LocalCharacter has killed EnemyCharacter from EnemyGuild (LocalFamily, EnemyFamily)
@@ -83,3 +84,17 @@ Notification delivery is opt-in and separate from preview generation. Durable cl
 `fixtures/calibration-historical.json` contains historical field positions and a documentation-only server CIDR. `fixtures/combat-synthetic.pcap` is generated from synthetic MAC/IP addresses and player names. The synthetic-PCAP test never sniffs live traffic. Scapy may require interface-enumeration access during import even for offline use.
 
 Current-patch calibration, authenticated network traces, prolonged capture, TCP sequence wraparound, and exhaustive packet-loss recovery remain unverified. The decoder does not decrypt unknown payloads or bypass game protections.
+
+## Compatibility sources
+
+OpenIQ is an independent implementation. Public Critiq workflow documentation
+and product demonstrations informed the feature design; upstream application
+code and branding assets are not included. The [Critiq documentation](https://critiq.one/docs/index.html)
+and [IKUSA introduction](https://ikusa.site/docs/introduction) provide context,
+not a promise of feature parity or identical private formulas.
+
+The historical packet calibration derives from public field-format information
+in [sch-28/ikusa_logger](https://github.com/sch-28/ikusa_logger), dated 2023-04-19.
+The decoder implementation is independent. Synthetic fixtures establish the
+implemented contract; they do not establish current-patch compatibility.
+Current validation boundaries live in [feature state](../tasks/FEATURE_STATE.md).
