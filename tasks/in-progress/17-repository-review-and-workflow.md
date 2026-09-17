@@ -1,7 +1,7 @@
 # Repository review and lightweight contributor workflow
 
 Priority: P2  
-Owner: unassigned
+Owner: Codex (repository review)
 
 ## Problem
 
