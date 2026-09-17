@@ -52,6 +52,14 @@ search every task state for related work (for example,
 - No CI service, branch protection, extra reviewer or approval ceremony is
   required. Put validation and any remaining limitations in the task and PR.
 
+## Documentation
+
+Keep `docs/` for maintained instructions and behavior reference. Put concise
+reproduction steps and validation results in the relevant task; use the PR
+body for change summaries. Do not add dated audit reports, PR-review narratives,
+agent session logs or duplicate readiness/backlog checklists. Preserve useful
+operating instructions in the appropriate guide and let Git retain history.
+
 ## Starting a task
 
 1. Ensure the worktree is clean or that unrelated work is safely committed.

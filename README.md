@@ -252,7 +252,8 @@ an operator mounts its backup directory; see [backup operations and restore dril
 The same guide documents the checked, staged `restore` command and its offline
 overwrite/recovery requirements.
 
-Research and independent behavior decisions: [investigation](docs/RESEARCH.md), [feature matrix](docs/FEATURES.md), [data contract](docs/CONTRACTS.md).
+Supported workflows: [feature matrix](docs/FEATURES.md). Calculations, API behavior
+and compatibility sources: [application contracts](docs/CONTRACTS.md).
 
 ## Calibrated packet capture
 

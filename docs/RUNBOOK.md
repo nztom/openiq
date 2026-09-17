@@ -2,8 +2,9 @@
 
 Use one Compose project for one guild or a trusted guild cluster. SQLite is the
 default; PostgreSQL setup and tested transfer/restore instructions are in
-[DATABASES.md](DATABASES.md). Complete [READINESS.md](READINESS.md)'s live checks
-before officers rely on a particular installation.
+[DATABASES.md](DATABASES.md). Check the current
+[feature boundaries](../tasks/FEATURE_STATE.md) and complete the relevant live
+acceptance tasks before officers rely on a particular installation.
 
 ## Prepare Discord and the host
 
@@ -177,6 +178,7 @@ docker compose --profile jobs down
 Do not add `--volumes` unless intentionally destroying the saved installation.
 Rehearse shutdown, abrupt termination, restart and upgrade on the target Linux
 host. Record staging command/button/role/ticket/reminder results, a real war and
-import review, restore evidence, and officer/member acceptance in READINESS.md.
+import review, restore evidence, and officer/member acceptance in the matching
+[task documents](../tasks/README.md).
 Include keyboard and spoken screen-reader workflow review. Keep failed or
 unavailable checks open with their reason and next action.
