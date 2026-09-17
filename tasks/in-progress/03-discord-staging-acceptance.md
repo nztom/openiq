@@ -22,3 +22,18 @@ against a staging guild.
 ## Validation
 
 Use only a dedicated staging guild and explicitly enabled delivery credentials.
+
+## Progress
+
+- The Pi Swarm deployment is healthy at version `6e827933e3be`: web readiness,
+  database, migrations, storage, and the embedded bot heartbeat pass, and the
+  bot resumed its Discord gateway session.
+- Read-only diagnostics pass for guild 1: the bot token and installation are
+  valid, ticket-channel creation is allowed, and no registered commands are
+  missing. Guilds 2 and 3 fail the installation check and need confirmation as
+  either stale local records or Discord servers where the bot is not installed.
+- Found and fixed `bot_diagnostics` ignoring `DISCORD_BOT_TOKEN_FILE` when run
+  with `docker exec`; `guilds.test_bot_diagnostics` passes on Linux and covers
+  Docker-secret file loading. `python manage.py check` also passes.
+- Added the role, command, component, revocation, and permission-failure staging
+  checklist to the runbook. The four-role interactive checks remain pending.

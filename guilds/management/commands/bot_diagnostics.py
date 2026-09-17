@@ -1,10 +1,21 @@
 """Read-only Discord installation checks; never register commands or send messages."""
 import json
 import os
+from pathlib import Path
 import httpx
 from django.core.management.base import BaseCommand,CommandError
 from guilds.models import Guild
 from guilds.modules.commands import COMMANDS
+
+
+def bot_token():
+    token=os.getenv('DISCORD_BOT_TOKEN')
+    token_file=os.getenv('DISCORD_BOT_TOKEN_FILE')
+    if token or not token_file:return token
+    try:
+        return Path(token_file).read_text().strip()
+    except OSError:
+        return None
 
 
 def permissions_for(server,roles,membership,channel=None):
@@ -31,9 +42,9 @@ class Command(BaseCommand):
     def add_arguments(self,parser):parser.add_argument('--guild',type=int)
 
     def handle(self,*args,**options):
-        token=os.getenv('DISCORD_BOT_TOKEN')
+        token=bot_token()
         if not token:
-            raise CommandError('Set DISCORD_BOT_TOKEN to run read-only bot diagnostics.')
+            raise CommandError('Set DISCORD_BOT_TOKEN or a readable DISCORD_BOT_TOKEN_FILE to run read-only bot diagnostics.')
         reports=[]
         with httpx.Client(base_url='https://discord.com/api/v10',headers={'Authorization':'Bot '+token},timeout=15) as client:
             def read(path):
