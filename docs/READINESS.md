@@ -1,14 +1,11 @@
 # Guild readiness checklist
 
-This is the shared work queue for making OpenIQ safe and practical for a real,
-self-hosted Black Desert guild. Contributors should take one unchecked item,
-avoid combining unrelated items, and push a focused commit when its validation
-passes. Mark the item complete in that same commit. Items within a numbered
-group are ordered; separate groups can usually be worked on in parallel.
-
-The target deployment is one guild or a small, trusted guild cluster using one
-Compose project and its persistent data volume. Live BDO, Discord, and Twitch
-verification and the choice of a public host remain external launch checks.
+Historical implementation checklist, retained as evidence. **Do not claim work
+from this checklist or treat its unchecked boxes as the current backlog.**
+Use the [task register](../tasks/README.md) and
+[feature state](../tasks/FEATURE_STATE.md) for ownership, dependencies and
+current deployment boundaries. Later task evidence supersedes older claims
+below, including bot connectivity and host rehearsal status.
 
 ## 1. Identity and initial setup
 

@@ -35,14 +35,32 @@ search every task state for related work (for example,
   the same current backlog. Update `FEATURE_STATE.md` when a task changes a
   documented feature boundary.
 
+## Keep the workflow small
+
+- Use one task branch and one PR per independently deliverable change. Batch
+  related backlog discoveries into that PR; no separate audit backlog is needed.
+- A new task can be planned and claimed in the same published planning commit
+  before implementation. Existing tasks still use the move-and-push claim.
+- Branch claims are not visible in `main` until merged. During overlap checks,
+  inspect open PRs and their task documents as well as local task states. Open
+  the task PR when publishing the claim so other contributors can find it.
+- Run focused tests for the changed behavior and Django checks. Use browser,
+  OCR, database and container checks when those paths change. Reserve the full
+  offline release gate for release validation or changes that warrant it.
+- Documentation-only changes need link/command review, not a Windows runtime
+  or the full coverage/browser gate. Code tasks retain the cross-platform rule.
+- No CI service, branch protection, extra reviewer or approval ceremony is
+  required. Put validation and any remaining limitations in the task and PR.
+
 ## Starting a task
 
 1. Ensure the worktree is clean or that unrelated work is safely committed.
 2. Update your local `main`: `git fetch origin && git switch main && git pull --ff-only origin main`.
 3. Create a branch from current `main`.
 4. Move the selected task from `tasks/todo/` to `tasks/in-progress/` with `git mv`.
-5. Commit and push that move before editing code. This is the ownership claim
-   that prevents another agent from selecting the same task.
+5. Commit and push that move before editing code, then open its PR with the
+   task ID in the title or description. Check other open claims before editing;
+   a branch push alone does not reserve a task in `main`.
 
 ## Completing a task
 
