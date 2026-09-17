@@ -30,8 +30,9 @@ Use only a dedicated staging guild and explicitly enabled delivery credentials.
   bot resumed its Discord gateway session.
 - Read-only diagnostics pass for guild 1: the bot token and installation are
   valid, ticket-channel creation is allowed, and no registered commands are
-  missing. Guilds 2 and 3 fail the installation check and need confirmation as
-  either stale local records or Discord servers where the bot is not installed.
+  missing. Guild 1 (`turtle_power`) is the authorized development workspace.
+  Guilds 2 (`Purge`) and 3 (`Hostile`) belong to an independent tester and are
+  outside this task; do not inspect, alter, or use them for validation.
 - Found and fixed `bot_diagnostics` ignoring `DISCORD_BOT_TOKEN_FILE` when run
   with `docker exec`; `guilds.test_bot_diagnostics` passes on Linux and covers
   Docker-secret file loading. `python manage.py check` also passes.
