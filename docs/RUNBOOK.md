@@ -72,6 +72,40 @@ docker compose --profile jobs up -d
 docker compose logs --tail=100 web scheduler
 ```
 
+### Discord staging acceptance
+
+Use a dedicated staging server and test accounts whose only authority comes
+from the role being checked. Keep delivery destinations pointed at staging
+channels. Record each result in the active staging task.
+
+1. Run `bot_diagnostics` for the OpenIQ guild and resolve every reported
+   missing command, channel permission, or welcome-role failure. Swarm installs
+   that mount the bot token as a Docker secret can run the command directly;
+   it reads `DISCORD_BOT_TOKEN_FILE` when the token is not in the command's
+   environment.
+2. Sign in as the server owner, an OpenIQ officer, an OpenIQ member, and a user
+   with none of the configured roles. Confirm the first three reach only their
+   allowed guild actions and the unconfigured user is denied. Remove the
+   member's Discord role, wait at least three minutes for the cached role claim
+   to expire, and confirm the next request ends their OpenIQ session.
+3. In Discord, exercise `/roster`, one officer-only command, one member command,
+   autocomplete, and a command with invalid input. Confirm responses are
+   private where expected, readable, and enforce the same roles as the web UI.
+4. Post a staging welcome card and use its role button as the intended member,
+   another member, and an officer. Confirm the intended member and officer can
+   make the configured change, the other member is denied, and unmanaged roles
+   remain unchanged.
+5. Temporarily remove one required permission at a time in a staging channel
+   and confirm the command or component fails without recording a false local
+   success. Restore the permission and retry successfully. Check View Channel,
+   Send Messages, Embed Links, Read Message History, Manage Channels for ticket
+   creation, and Manage Roles for welcome roles below the bot's highest role.
+
+The application install uses OAuth scopes `identify`, `guilds`, and
+`guilds.members.read`. The bot install uses `bot` and
+`applications.commands`. Default, non-privileged gateway intents are enough;
+Server Members and Message Content intents are not required for these checks.
+
 ## Local release smoke
 
 Run this disposable check before a host rehearsal. It builds a fresh image,
