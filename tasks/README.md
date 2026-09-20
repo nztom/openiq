@@ -26,8 +26,9 @@ search every task state for related work (for example,
   independently deliverable slices.
 - Every new task must state: priority, owner (`unassigned` initially), problem,
   scoped outcome, explicit non-goals where useful, dependencies, acceptance
-  criteria, and validation. Validation for code changes must cover Linux and
-  Windows. Link related task IDs instead of copying their text.
+  criteria, and validation. Windows runtime validation is required for desktop
+  capture and other OS-facing behavior, not ordinary web/server changes. Link
+  related task IDs instead of copying their text.
 - Update a task when planning changes its scope, dependencies, or acceptance
   criteria. Do not edit an `in-progress/` task owned by someone else; add a
   separate coordination note or contact its owner instead.
@@ -47,8 +48,9 @@ search every task state for related work (for example,
 - Run focused tests for the changed behavior and Django checks. Use browser,
   OCR, database and container checks when those paths change. Reserve the full
   offline release gate for release validation or changes that warrant it.
-- Documentation-only changes need link/command review, not a Windows runtime
-  or the full coverage/browser gate. Code tasks retain the cross-platform rule.
+- Documentation-only changes need link/command review, not a runtime or the
+  full coverage/browser gate. Web/server tasks need relevant Linux validation;
+  OS-facing tasks need validation on each supported target platform.
 - No CI service, branch protection, extra reviewer or approval ceremony is
   required. Put validation and any remaining limitations in the task and PR.
 
@@ -86,9 +88,10 @@ to `todo/` once the ownership claim has been cleared.
 
 ## Cross-platform requirement
 
-All code fixes and features must be OS-agnostic and run on both Linux and
-Windows. Avoid shell-specific commands, hard-coded paths, Unix-only process
-behavior, permissions assumptions, and platform-specific dependencies in
-application code and tests. Validate each code task on both operating systems
-before completion; if a platform exposes a defect, keep the task in progress
-until it is fixed rather than documenting it away.
+Keep application code and tests OS-agnostic. Avoid shell-specific commands,
+hard-coded paths, Unix-only process behavior, permissions assumptions, and
+platform-specific dependencies. Linux validation is sufficient for ordinary
+web and server changes. Validate live desktop capture, local client,
+installer/updater, and other explicitly OS-facing behavior on each supported
+target platform; if a required platform exposes a defect, keep that task in
+progress until it is fixed rather than documenting it away.

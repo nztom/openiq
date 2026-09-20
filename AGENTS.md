@@ -27,7 +27,8 @@ When changing behavior or adding code, add or update focused automated tests
 where practical, and run the relevant tests before handing off. Tests are an
 engineering expectation, not a protected-branch, CI, or pull-request gate.
 
-All fixes and features must be OS-agnostic and run on both Linux and Windows.
-Avoid shell-specific commands, hard-coded paths, Unix-only process behavior,
-permissions assumptions, and platform-specific dependencies in application code
-and tests. Validate code tasks on both operating systems before completing them.
+Keep application code and tests OS-agnostic. Avoid shell-specific commands,
+hard-coded paths, Unix-only process behavior, permissions assumptions, and
+platform-specific dependencies. Linux validation is sufficient for web and
+server changes. Require Windows runtime validation for live desktop capture,
+local client/installer/updater behavior, and other explicitly OS-facing work.

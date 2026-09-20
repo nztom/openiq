@@ -1,10 +1,40 @@
 from .core import *
 
+MEMBER_TEXT_FIELDS={'character':80,'class':40,'group':80}
+MEMBER_DEFAULTS={'character':'','class':'Unknown','spec':'Succession','active':True,'exception':False,'group':'Unassigned'}
+SPECIALIZATIONS=['Succession','Awakening','Ascension']
+
+def optional_text(value,field,maximum):
+    if not isinstance(value,str) or len(value)>maximum: raise Invalid(f'{field} must be text containing at most {maximum} characters')
+    return value.strip()
+
+def member_fields(data):
+    """Validate and normalize the editable fields stored on a member record."""
+    result=dict(data)
+    result['name']=text(result.get('name'),'family name',80)
+    for field,maximum in MEMBER_TEXT_FIELDS.items():
+        result[field]=optional_text(result.get(field,MEMBER_DEFAULTS[field]),field,maximum)
+    result['spec']=choice(result.get('spec',MEMBER_DEFAULTS['spec']),SPECIALIZATIONS,'specialization')
+    for field in ('active','exception'):
+        value=result.get(field,MEMBER_DEFAULTS[field])
+        if not isinstance(value,bool): raise Invalid(f'{field} must be a boolean')
+        result[field]=value
+    result['joined']=date(result.get('joined',now()[:10]))
+    return result
+
+def member_errors(data):
+    try: member_fields(data)
+    except Invalid as exc: return str(exc)
+    return ''
+
 def handle(g,action,p,role,user):
     if action=='class':
         m=owner_or_self(g,role,user,p['member']); m.data['class']=text(p['class'],'class',40)
-        m.data['spec']=choice(p.get('spec','Succession'),['Succession','Awakening','Ascension'],'specialization'); m.save()
-        if p.get('backfill'):
+        m.data['spec']=choice(p.get('spec','Succession'),SPECIALIZATIONS,'specialization')
+        backfill=p.get('backfill',False)
+        if not isinstance(backfill,bool): raise Invalid('backfill must be a boolean')
+        m.save()
+        if backfill:
             require(role)
             for w in rows(g,'war'):
                 for row in w.data['participants']:
@@ -16,7 +46,7 @@ def handle(g,action,p,role,user):
         key=p.get('id'); old=get(g,'member',key).data if key else {}
         name=text(p.get('name',old.get('name')),'family name',80)
         if any(m.key!=key and m.data['name'].casefold()==name.casefold() for m in rows(g,'member')): raise Invalid('Family name already exists')
-        data={**old,'name':name,'character':p.get('character',old.get('character','')),'class':p.get('class',old.get('class','Unknown')),'spec':p.get('spec',old.get('spec','Succession')),'joined':date(p.get('joined',old.get('joined',now()[:10]))),'active':p.get('active',old.get('active',True)),'exception':p.get('exception',old.get('exception',False)),'group':p.get('group',old.get('group','Unassigned'))}
+        data=member_fields({**old,'name':name,'character':p.get('character',old.get('character','')),'class':p.get('class',old.get('class','Unknown')),'spec':p.get('spec',old.get('spec','Succession')),'joined':p.get('joined',old.get('joined',now()[:10])),'active':p.get('active',old.get('active',True)),'exception':p.get('exception',old.get('exception',False)),'group':p.get('group',old.get('group','Unassigned'))})
         return public(save(g,'member',data,key))
     if action=='link':
         m=get(g,'member',p['member']); uid=str(p.get('user_id',''))
