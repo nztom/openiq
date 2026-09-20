@@ -1,7 +1,7 @@
 # Reject roster values that break dashboard rendering
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
