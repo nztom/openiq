@@ -66,6 +66,8 @@ DISCORD_CLIENT_ID=YOUR_DISCORD_APPLICATION_ID
 DISCORD_REDIRECT_URI=https://openiq.example.com/auth/discord/callback/
 ENABLE_DISCORD_DELIVERY=0
 RUN_DISCORD_BOT=0
+RUN_SCHEDULER=0
+SCHEDULER_INTERVAL=30
 DISCORD_SYNC_GLOBAL=1
 DISCORD_SYNC_GUILD=
 ```
@@ -117,11 +119,16 @@ service's node-local SQLite database.
 
 ## Scheduled jobs
 
-These compact examples do not start the application scheduler. The embedded
-bot and backup scheduler do not run reminder, recurrence, summary, roster-sync,
-or outbox jobs. For now, operators must run `python manage.py tick` in the web
-container when those jobs are needed; Discord sends still require explicit
-delivery enablement. Root single-host Compose separately offers the `jobs`
-profile. Do not copy that service into Swarm with an unconstrained local SQLite
-volume: it could use a different node's database. The supported Swarm runtime
-is tracked in [task 22](../tasks/todo/22-swarm-scheduled-work.md).
+Set `RUN_SCHEDULER=1` to run the application scheduler as a supervised child of
+the single `web` replica. It uses the same `/data/db.sqlite3`, automatically
+adds `scheduler` to readiness requirements, stops with the web process, and
+causes the container to restart if it exits unexpectedly. Keep the web service
+at one replica so exactly one scheduler owns the node-local SQLite database.
+
+When disabled, reminder, recurrence, summary, roster-sync, and outbox jobs do
+not run automatically; operators must run `python manage.py tick` in the web
+container. Discord sends additionally require explicit delivery enablement.
+Do not add a separately schedulable Swarm service with local SQLite because it
+could run against a different node's database. The root development Compose
+file may still use its node-local `jobs` profile. Implementation and validation
+evidence are recorded in [task 22](../tasks/complete/22-swarm-scheduled-work.md).

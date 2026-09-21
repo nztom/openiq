@@ -15,8 +15,12 @@ done
 
 data_dir=${OPENIQ_DATA_DIR:-/data}
 bot_pid=
+scheduler_pid=
 if [ "${RUN_DISCORD_BOT:-0}" = "1" ]; then
     case ",${REQUIRED_PROCESSES:-}," in *,bot,*) ;; *) export REQUIRED_PROCESSES="${REQUIRED_PROCESSES:+${REQUIRED_PROCESSES},}bot";; esac
+fi
+if [ "${RUN_SCHEDULER:-0}" = "1" ]; then
+    case ",${REQUIRED_PROCESSES:-}," in *,scheduler,*) ;; *) export REQUIRED_PROCESSES="${REQUIRED_PROCESSES:+${REQUIRED_PROCESSES},}scheduler";; esac
 fi
 restore_source=${BACKUP_RESTORE_SOURCE:-}
 if [ -n "$restore_source" ] && [ ! -e "$data_dir/db.sqlite3" ]; then
@@ -46,6 +50,10 @@ fi
 if [ "${RUN_DISCORD_BOT:-0}" = "1" ]; then
     python manage.py runbot &
     bot_pid=$!
+fi
+if [ "${RUN_SCHEDULER:-0}" = "1" ]; then
+    python manage.py scheduler --interval "${SCHEDULER_INTERVAL:-30}" &
+    scheduler_pid=$!
 fi
 if [ "${RUN_BACKEND_ADMIN_SETUP:-0}" = "1" ]; then
     python manage.py bootstrap_admin
@@ -84,6 +92,10 @@ stop() {
         kill -TERM "$bot_pid" 2>/dev/null || true
         wait "$bot_pid" 2>/dev/null || true
     fi
+    if [ -n "$scheduler_pid" ]; then
+        kill -TERM "$scheduler_pid" 2>/dev/null || true
+        wait "$scheduler_pid" 2>/dev/null || true
+    fi
     backup_now
 }
 trap 'stop; exit 0' INT TERM
@@ -93,6 +105,12 @@ while kill -0 "$app_pid" 2>/dev/null; do
     if [ -n "$bot_pid" ] && ! kill -0 "$bot_pid" 2>/dev/null; then
         wait "$bot_pid" || true
         echo "Discord bot exited unexpectedly; stopping web process for restart." >&2
+        kill -TERM "$app_pid" 2>/dev/null || true
+        break
+    fi
+    if [ -n "$scheduler_pid" ] && ! kill -0 "$scheduler_pid" 2>/dev/null; then
+        wait "$scheduler_pid" || true
+        echo "Scheduler exited unexpectedly; stopping web process for restart." >&2
         kill -TERM "$app_pid" 2>/dev/null || true
         break
     fi
@@ -106,6 +124,10 @@ fi
 if [ -n "$bot_pid" ]; then
     kill -TERM "$bot_pid" 2>/dev/null || true
     wait "$bot_pid" || true
+fi
+if [ -n "$scheduler_pid" ]; then
+    kill -TERM "$scheduler_pid" 2>/dev/null || true
+    wait "$scheduler_pid" || true
 fi
 backup_now
 exit "$app_status"

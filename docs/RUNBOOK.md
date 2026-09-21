@@ -65,11 +65,14 @@ Use global sync for a production installation when ready; do not enable both.
 Set `ENABLE_DISCORD_DELIVERY=1` and `RUN_DISCORD_BOT=1` only after reviewing
 destinations and permissions. The bot runs inside `web`; restart that service
 after changing either setting.
+Set `RUN_SCHEDULER=1` when automatic reminders, recurrence, summaries,
+roster-sync, and outbox delivery are required. The scheduler also runs inside
+`web` and automatically becomes a readiness requirement.
 
 ```sh
 docker compose exec web python manage.py bot_diagnostics --guild GUILD_ID
-docker compose --profile jobs up -d
-docker compose logs --tail=100 web scheduler
+docker compose up -d web
+docker compose logs --tail=100 web
 ```
 
 ## Local release smoke
@@ -113,9 +116,8 @@ this smoke check.
 server ID. Settings reports local configuration, last capture acknowledgement,
 process heartbeats and the delivery queue; ?configured? does not prove that an
 external provider is reachable. `/healthz/` reports web liveness. `/readyz/`
-checks database, migrations and storage. `RUN_DISCORD_BOT=1` automatically
-requires the embedded bot heartbeat; set `REQUIRED_PROCESSES=scheduler` when
-the scheduler profile is enabled.
+checks database, migrations and storage. `RUN_DISCORD_BOT=1` and
+`RUN_SCHEDULER=1` automatically require their embedded process heartbeats.
 
 ## Operate and recover
 
