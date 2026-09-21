@@ -1,7 +1,7 @@
 # Guild data portability between OpenIQ instances
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -57,4 +57,5 @@ backup files.
   schema/version validation, dry-run preview, rollback on failure, and conflict
   handling.
 - Browser coverage for the owner download/upload/confirm workflow.
-- Run the relevant test suite on Linux and Windows.
+- Run the relevant test suite and browser workflow on Linux; this web/server
+  task does not require Windows runtime validation.
