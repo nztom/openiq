@@ -130,4 +130,5 @@ not run automatically; operators must run `python manage.py tick` in the web
 container. Discord sends additionally require explicit delivery enablement.
 Do not add a separately schedulable Swarm service with local SQLite because it
 could run against a different node's database. The root development Compose
-file may still use its node-local `jobs` profile.
+file may still use its node-local `jobs` profile. Implementation and validation
+evidence are recorded in [task 22](../tasks/complete/22-swarm-scheduled-work.md).
