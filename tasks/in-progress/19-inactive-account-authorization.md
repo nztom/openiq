@@ -1,7 +1,7 @@
 # Enforce inactive-account denial across action transports
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
