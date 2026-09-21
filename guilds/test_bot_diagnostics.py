@@ -1,4 +1,6 @@
-import io,json
+import io,json,tempfile
+from pathlib import Path
+import httpx
 from unittest.mock import Mock,patch
 from django.test import TestCase
 from django.core.management import call_command,CommandError
@@ -27,5 +29,16 @@ class BotDiagnosticsTests(TestCase):
         self.assertNotIn('unused',checks['channels']);self.assertEqual(checks['missing_commands'],[]);self.assertNotIn('secret',output.getvalue())
 
     def test_requires_token_and_administrator_overrides(self):
-        with patch.dict('os.environ',{'DISCORD_BOT_TOKEN':''}),self.assertRaises(CommandError):call_command('bot_diagnostics')
+        with patch.dict('os.environ',{'DISCORD_BOT_TOKEN':'','DISCORD_BOT_TOKEN_FILE':''}),self.assertRaises(CommandError):call_command('bot_diagnostics')
         self.assertTrue(permissions_for('100',[{'id':'100','permissions':'8'}],{'roles':[]}) & (1<<28))
+
+    def test_reads_docker_secret_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            token_file=Path(directory)/'discord-token'
+            token_file.write_text('secret\n')
+            with patch.dict('os.environ',{'DISCORD_BOT_TOKEN':'','DISCORD_BOT_TOKEN_FILE':str(token_file)}),patch('httpx.Client') as factory:
+                factory.return_value.__enter__.return_value.get.side_effect=httpx.ConnectError('offline')
+                with self.assertRaisesMessage(CommandError,'Cannot verify the bot token/application'):
+                    call_command('bot_diagnostics')
+                authorization=factory.call_args.kwargs['headers']['Authorization']
+                self.assertEqual(authorization,'Bot secret')
