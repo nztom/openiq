@@ -134,6 +134,11 @@ the scheduler profile is enabled.
   and a fresh verified Discord owner/Administrator/Manage Guild claim; see
   [CONTRACTS.md](CONTRACTS.md). Never edit JSON or a live database as a routine
   substitute for the supported maintenance commands.
+- **Roster integrity:** run `python manage.py validate_roster` to check every
+  guild, or add `--guild GUILD_ID` to limit the read-only check. The command
+  reports malformed member IDs without printing roster contents. Correct each
+  reported row through an owner-authorized roster edit, then rerun the check;
+  do not edit the JSON database column directly.
 - **Data/privacy:** `maintain` previews operator changes before `--apply`.
   [PRIVACY.md](PRIVACY.md) describes member export/unlink/anonymization/deletion;
   `retention` previews age-based cleanup. Historical war scores stay anonymous

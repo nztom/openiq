@@ -170,8 +170,9 @@ Read the [task workflow](tasks/README.md) before starting work. For ordinary
 changes, run the relevant Django test modules and `python manage.py check`.
 Run `node --check static/app.js` when changing that file, and opt into browser
 tests for affected UI behavior. Documentation-only changes need link and
-command review, not the complete release gate. Application changes still need
-Linux and Windows validation before their task is completed.
+command review, not the complete release gate. Linux validation is sufficient
+for web/server changes; live desktop capture and other OS-facing behavior must
+be validated on each supported target platform.
 
 ## Full release verification
 
