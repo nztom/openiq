@@ -5,8 +5,12 @@ from .modules.core import Invalid
 from .modules.registry import MODULES
 from django.core.exceptions import PermissionDenied
 
-def access(user,guild):
+def require_active(user):
     if not user.is_authenticated: raise PermissionDenied('Sign in first')
+    if not user.is_active: raise PermissionDenied('This account is inactive')
+
+def access(user,guild):
+    require_active(user)
     try: return Access.objects.get(user=user,guild=guild).role
     except Access.DoesNotExist: raise PermissionDenied('You do not have access to this guild')
 

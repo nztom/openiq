@@ -5,6 +5,7 @@ import httpx
 from django.test import TestCase
 from django.test import override_settings
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from .models import Guild,Access
 from .modules.core import Invalid
 from .modules.integrations import fetch_roster,ocr,roster_html
@@ -109,6 +110,21 @@ class AdapterTests(TestCase):
         with patch('httpx.post',side_effect=httpx.ConnectError('offline')):
             self.assertEqual(self.client.get('/auth/discord/callback/',{'state':'test','code':'code'}).status_code,400)
         self.assertNotIn('_auth_user_id',self.client.session)
+    def test_oauth_rejects_inactive_existing_account_without_resynchronizing(self):
+        user=User.objects.create_user('discord_123',password='still-disabled-by-operator',is_active=False)
+        guild=Guild.objects.create(name='Inactive OAuth',server_id='123')
+        Access.objects.create(user=user,guild=guild,role='member')
+        session=self.client.session;session['oauth_state']={'value':'test','at':time.time()};session.save()
+        token=Mock();token.json.return_value={'access_token':'secret','expires_in':3600}
+        profile=Mock();profile.json.return_value={'id':'123'}
+        with patch('httpx.post',return_value=token),patch('httpx.get',return_value=profile),patch('guilds.discord_auth.synchronize') as sync:
+            response=self.client.get('/auth/discord/callback/',{'state':'test','code':'code'})
+        self.assertEqual(response.status_code,403);sync.assert_not_called()
+        user.refresh_from_db();self.assertTrue(user.has_usable_password())
+        self.assertEqual(Access.objects.get(user=user,guild=guild).role,'member')
+        self.assertNotIn('_auth_user_id',self.client.session)
+        with patch('httpx.Client') as remote,self.assertRaises(PermissionDenied):synchronize(user,'secret')
+        remote.assert_not_called()
     def test_synchronize_grants_and_revokes_roles_atomically(self):
         user=User.objects.create_user('discord_user');g=Guild.objects.create(name='Guild',server_id='123',config={'roles':{'admin':['42']}})
         servers=Mock();servers.json.return_value=[{'id':'123'}]
