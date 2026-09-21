@@ -10,7 +10,7 @@ guild installation.
 
 | Area | State | Boundary |
 | --- | --- | --- |
-| Core guild workflows | Existing regression suite passes; challenge-response redaction remains open | Tasks 18 and 20 resolved roster and onboarding validation defects; task 21 tracks pending-roll disclosure. A real officer/member event and war still need acceptance. |
+| Core guild workflows | Reproduced roster, onboarding, and challenge-response defects are regression-covered | Tasks 18, 20, and 21 resolved the reviewed defects; a real officer/member event and war still need acceptance. |
 | Access, privacy, and settings | Inactive-account denial is enforced at shared-service, Discord, OAuth, autocomplete, and capture boundaries | Task 19 resolved the reproduced authorization gap. |
 | Discord/OAuth/delivery | Bot connected and global commands synced on the Pi Swarm; workflow behavior remains mock-validated | Staging permissions, command use, restarts, and ambiguous remote outcomes need live validation. |
 | BDO capture and OCR | Synthetic fixtures validated | Current-patch traffic, regional screenshots, and sustained capture are unverified. |

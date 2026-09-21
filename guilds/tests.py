@@ -241,11 +241,28 @@ class DomainTests(TestCase):
         self.assertEqual(self.client.get('/events/shared/'+shared['share_token']+'/').status_code,403)
         self.client.force_login(self.owner);self.assertEqual(self.client.get('/events/shared/'+shared['share_token']+'/').status_code,200)
     def test_challenge_requires_opponent_acceptance(self):
-        c=self.run_action('operations','challenge',{'opponent':self.m})
-        with self.assertRaises(PermissionDenied):self.run_action('operations','accept_challenge',{'challenge':c['id']})
-        result=self.run_action('operations','accept_challenge',{'challenge':c['id']},self.member)
-        self.assertEqual(result['status'],'complete')
-        with self.assertRaises(Invalid):self.run_action('operations','accept_challenge',{'challenge':c['id']},self.member)
+        from unittest.mock import patch
+        with patch('secrets.randbelow',side_effect=[41,50,16]):
+            service=self.run_action('operations','challenge',{'opponent':self.m})
+            self.assertNotIn('roll',service)
+            self.assertEqual(get(self.g,'challenge',service['id']).data['roll'],42)
+            with self.assertRaises(PermissionDenied):self.run_action('operations','accept_challenge',{'challenge':service['id']})
+            self.client.force_login(self.owner)
+            response=self.client.post(f'/api/{self.g.pk}/operations/challenge/',data=json.dumps({'opponent':self.m}),content_type='application/json')
+            self.assertEqual(response.status_code,200);created=response.json()['result'];self.assertNotIn('roll',created)
+            stored=get(self.g,'challenge',created['id']);self.assertEqual(stored.data['roll'],51)
+            for user in [self.owner,self.member]:
+                self.client.force_login(user)
+                pending=next(item for item in self.client.get(f'/api/{self.g.pk}/state/').json()['records']['challenge'] if item['id']==created['id'])
+                self.assertNotIn('roll',pending)
+            response=self.client.post(f'/api/{self.g.pk}/operations/accept_challenge/',data=json.dumps({'challenge':created['id']}),content_type='application/json')
+            self.assertEqual(response.status_code,200);result=response.json()['result']
+            self.assertEqual((result['status'],result['roll'],result['opponent_roll']),('complete',51,17))
+            for user in [self.owner,self.member]:
+                self.client.force_login(user)
+                complete=next(item for item in self.client.get(f'/api/{self.g.pk}/state/').json()['records']['challenge'] if item['id']==created['id'])
+                self.assertEqual((complete['roll'],complete['opponent_roll']),(51,17))
+            with self.assertRaises(Invalid):self.run_action('operations','accept_challenge',{'challenge':created['id']},self.member)
     def test_capture_update_digest_and_atomic_install(self):
         import tempfile,zipfile,hashlib
         from pathlib import Path
