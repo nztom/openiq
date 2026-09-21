@@ -17,7 +17,7 @@ guild installation.
 | Backup, restore, upgrade | Commands and Compose support implemented | Rehearse off-host backup, restore, and failed-upgrade recovery on the selected host. |
 | PostgreSQL | Adapter and integration tests exist | Run them against the selected PostgreSQL version and matching client tools. |
 | Deployment and operations | Pi Swarm deployment active; public proxy routing, backups, and embedded bot observed | Restore/failed-upgrade rehearsal, monitoring/alerts, capacity, and guild-facing acceptance remain unverified. |
-| Scheduled jobs on Swarm | Runtime missing from compact examples and observed deployment | Task 22 adds an opt-in scheduler sharing web storage; healthy web/bot does not imply automatic delivery. |
+| Scheduled jobs on Swarm | Implemented and disposable-Swarm validated | Task 22 adds an opt-in, supervised scheduler sharing the single web replica's storage, readiness heartbeat, bounded interval configuration, and documented manual behavior when disabled. |
 | Portability and Critiq migration | Not implemented as user-facing import/export workflows | Tasks 11 and 14 cover instance transfer and Critiq XLSX import. |
 | Accessibility | Automated keyboard/layout/axe coverage | A person using a screen reader must complete the acceptance workflow. |
 

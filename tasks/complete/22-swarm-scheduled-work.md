@@ -38,3 +38,26 @@ exercise due jobs/restart in a disposable Swarm deployment. Do not send test
 messages to a production Discord guild.
 Run relevant automated regressions on Linux and a disposable Linux Swarm before
 completion.
+
+## Implementation progress
+
+- Added `RUN_SCHEDULER=1` and a bounded `SCHEDULER_INTERVAL` to the web-container
+  supervisor. Enabled schedulers share `/data`, automatically become readiness
+  requirements, stop cleanly, and force a container restart after unexpected
+  exit.
+- Compose and Swarm examples keep the scheduler opt-in inside the single web
+  replica. Deployment and runbook guidance explain the one-replica SQLite
+  constraint and manual `tick` behavior when disabled.
+- Linux validation on 2026-09-21 passed shell syntax, 11 scheduler/readiness/
+  delivery/environment tests, `manage.py check`, `git diff --check`, Compose
+  rendering, and Swarm-stack rendering.
+- The skill-guided read-only live check found all four Pi nodes healthy, all
+  services at desired replicas, and only `openiq_web` in the OpenIQ stack,
+  confirming that the deployed stack has no application scheduler.
+- Disposable Linux Swarm validation on 2026-09-21 built commit `680d4c5`, ran
+  one web replica and one scheduler against an isolated node-local volume, and
+  reported the scheduler healthy through `/readyz/`.
+- An overdue disposable reminder became `previewed` with exactly one outbox
+  row. Terminating the scheduler stopped the supervised web process, Swarm
+  replaced the task, readiness recovered, and the persisted reminder still
+  had exactly one outbox row. Discord delivery was disabled throughout.

@@ -7,10 +7,11 @@ from django.core.management.base import BaseCommand,CommandError
 
 def problems(env,debug,service='web'):
     errors=[]
-    for key in ('DEBUG','HTTPS','TRUST_PROXY','ALLOW_LOCAL_LOGIN','SEED_DEMO','ENABLE_BACKEND_ADMIN','ENABLE_DISCORD_DELIVERY','RUN_DISCORD_BOT','DISCORD_SYNC_GLOBAL'):
+    for key in ('DEBUG','HTTPS','TRUST_PROXY','ALLOW_LOCAL_LOGIN','SEED_DEMO','ENABLE_BACKEND_ADMIN','ENABLE_DISCORD_DELIVERY','RUN_DISCORD_BOT','RUN_SCHEDULER','DISCORD_SYNC_GLOBAL'):
         if key in env and env[key] not in ('0','1'):errors.append(key+' must be 0 or 1')
     if env.get('ENABLE_DISCORD_DELIVERY')=='1' and not env.get('DISCORD_BOT_TOKEN'):errors.append('Enabled Discord delivery requires DISCORD_BOT_TOKEN')
     if env.get('RUN_DISCORD_BOT')=='1' and env.get('ENABLE_DISCORD_DELIVERY')!='1':errors.append('RUN_DISCORD_BOT requires ENABLE_DISCORD_DELIVERY=1')
+    if env.get('RUN_SCHEDULER')=='1' and (not env.get('SCHEDULER_INTERVAL','30').isdecimal() or not 1<=int(env.get('SCHEDULER_INTERVAL','30'))<=86400):errors.append('SCHEDULER_INTERVAL must be from 1 to 86400 seconds')
     if not debug:
         if env.get('REQUEST_LIMITS_ENABLED')=='0':errors.append('Production request limits must remain enabled')
         if env.get('ALLOW_LOCAL_LOGIN')=='1':errors.append('Production member password login must be disabled')

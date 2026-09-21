@@ -12,8 +12,9 @@ class EnvironmentTests(SimpleTestCase):
         self.assertEqual(problems({'ALLOW_LOCAL_LOGIN':'1','SEED_DEMO':'1'},True),[])
 
     def test_invalid_boolean_delivery_and_sync_are_rejected_without_secrets(self):
-        errors=problems({'ENABLE_DISCORD_DELIVERY':'1','DEBUG':'yes','DISCORD_SYNC_GLOBAL':'1','DISCORD_SYNC_GUILD':'123'},True)
-        self.assertEqual(len(errors),3)
+        errors=problems({'ENABLE_DISCORD_DELIVERY':'1','DEBUG':'yes','RUN_SCHEDULER':'yes','DISCORD_SYNC_GLOBAL':'1','DISCORD_SYNC_GUILD':'123'},True)
+        self.assertEqual(len(errors),4)
+        self.assertEqual(problems({'RUN_SCHEDULER':'1','SCHEDULER_INTERVAL':'0'},True),['SCHEDULER_INTERVAL must be from 1 to 86400 seconds'])
 
     def test_unsafe_hosts_tls_origins_and_hsts_are_rejected(self):
         errors=problems({'ALLOWED_HOSTS':'*','CSRF_TRUSTED_ORIGINS':'http://bad.example','HSTS_SECONDS':'-1'},False)
