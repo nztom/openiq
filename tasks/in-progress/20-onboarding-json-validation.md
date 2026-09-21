@@ -1,7 +1,7 @@
 # Reject malformed onboarding JSON without server errors
 
 Priority: P2  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -29,4 +29,4 @@ None.
 
 Use authenticated request tests for array/null/string/number bodies, malformed
 JSON, missing fields, and valid onboarding in local and production modes.
-Run relevant automated regressions on Linux and Windows before completion.
+Run relevant automated regressions on Linux before completion.
