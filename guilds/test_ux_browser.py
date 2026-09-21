@@ -6,12 +6,50 @@ from django.contrib.auth.models import User
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import override_settings
 
-from .models import Access, Guild
+from .models import Access, Guild, Record
 
 
 @skipUnless(os.getenv('OPENIQ_BROWSER_TEST') == '1', 'Opt-in browser integration')
 @override_settings(DEBUG=True, SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False, CSRF_COOKIE_SECURE=False)
 class DashboardUXTests(StaticLiveServerTestCase):
+    def test_owner_exports_previews_and_confirms_guild_transfer(self):
+        from playwright.sync_api import sync_playwright
+
+        user = User.objects.create_user('portability-ux')
+        source = Guild.objects.create(name='Portability A Source')
+        target = Guild.objects.create(name='Portability B Target')
+        Access.objects.create(user=user, guild=source, role='owner')
+        Access.objects.create(user=user, guild=target, role='owner')
+        Record.objects.create(guild=source, kind='member', key='portable-member', data={
+            'name': 'Portable Family', 'character': '', 'class': 'Unknown',
+            'spec': 'Succession', 'active': True, 'exception': False,
+            'group': 'Unassigned', 'joined': '2026-09-21',
+        })
+        self.client.force_login(user)
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(channel=os.getenv('OPENIQ_BROWSER_CHANNEL') or None, headless=True)
+            try:
+                page = browser.new_page()
+                page.context.add_cookies([{'name': 'sessionid', 'value': self.client.cookies['sessionid'].value, 'url': self.live_server_url}])
+                page.goto(self.live_server_url)
+                page.get_by_role('button', name='Settings', exact=True).click()
+                with page.expect_download() as pending:
+                    page.get_by_role('button', name='Export guild', exact=True).click()
+                export_path = pending.value.path()
+                page.get_by_role('combobox', name='Current guild').select_option(str(target.pk))
+                page.wait_for_function(f'state && state.guild.id === {target.pk}')
+                page.get_by_role('button', name='Settings', exact=True).click()
+                page.get_by_role('button', name='Import guild', exact=True).click()
+                page.get_by_label('Guild export', exact=True).set_input_files(export_path)
+                page.get_by_role('button', name='Preview import', exact=True).click()
+                page.get_by_text('1 create', exact=False).wait_for()
+                page.get_by_label('Destination guild confirmation', exact=True).fill(target.name)
+                page.get_by_role('button', name='Confirm import', exact=True).click()
+                page.get_by_text('Imported 1 records', exact=False).wait_for()
+                self.assertTrue(page.evaluate("state.records.member.some(item => item.id === 'portable-member')"))
+            finally:
+                browser.close()
+
     def test_empty_states_keyboard_and_failed_save(self):
         from playwright.sync_api import sync_playwright
 

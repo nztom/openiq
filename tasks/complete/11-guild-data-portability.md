@@ -1,7 +1,7 @@
 # Guild data portability between OpenIQ instances
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -57,4 +57,25 @@ backup files.
   schema/version validation, dry-run preview, rollback on failure, and conflict
   handling.
 - Browser coverage for the owner download/upload/confirm workflow.
-- Run the relevant test suite on Linux and Windows.
+- Run the relevant test suite and browser workflow on Linux; this web/server
+  task does not require Windows runtime validation.
+
+## Completed outcome
+
+- Added the documented `openiq-guild-v1` JSON envelope with a canonical payload
+  digest, bounded schema, record-count and 4 MiB request limits, and an explicit
+  portable record/configuration allowlist.
+- Owner-only exports redact account links, Discord/Twitch identifiers,
+  credentials, external destinations, delivery state, and non-portable records.
+  Responses are download-only and use `no-store`; no export is retained.
+- The existing operator `maintain export` command now uses the same envelope
+  instead of emitting a second incompatible `openiq-guild-v1` structure.
+- Owner-only imports validate the envelope and relationships, report exact
+  create/skip/reject counts, require the destination guild name and unchanged
+  preview digest, and atomically refuse all conflicting writes.
+- The Settings workflow downloads, uploads, previews, explains manual
+  reconfiguration, and confirms imports. The runbook, privacy guide, and format
+  reference document the boundary.
+- Linux validation on 2026-09-21 passed focused portability and maintenance
+  tests, Django system checks, JavaScript syntax and whitespace checks, plus a
+  real Chromium download/preview/confirm transfer between disposable guilds.

@@ -42,6 +42,49 @@ def state(request,guild_id):
     return JsonResponse(result)
 
 @login_required
+def portability_export(request,guild_id):
+    from django.http import HttpResponse
+    from .modules.core import require
+    from .portability import export_guild
+    g=get_object_or_404(Guild,pk=guild_id);require(access(request.user,g),'owner')
+    body=json.dumps(export_guild(g),ensure_ascii=False,indent=2)
+    response=HttpResponse(body,content_type='application/json; charset=utf-8')
+    response['Content-Disposition']=f'attachment; filename="openiq-guild-{g.pk}.json"'
+    response['Cache-Control']='no-store'
+    return response
+
+def _portability_request(request):
+    from .portability import MAX_PACKAGE_BYTES
+    if int(request.META.get('CONTENT_LENGTH') or 0)>MAX_PACKAGE_BYTES:raise Invalid('Import exceeds 4 MiB')
+    payload=json.loads(request.body)
+    if not isinstance(payload,dict) or 'package' not in payload:raise Invalid('Import request is invalid')
+    if len(json.dumps(payload['package'],ensure_ascii=False).encode())>MAX_PACKAGE_BYTES:raise Invalid('Import exceeds 4 MiB')
+    return payload
+
+@login_required
+@require_POST
+def portability_preview(request,guild_id):
+    from .modules.core import require
+    from .portability import preview_import
+    try:
+        g=get_object_or_404(Guild,pk=guild_id);require(access(request.user,g),'owner')
+        payload=_portability_request(request)
+        return JsonResponse({'ok':True,'preview':preview_import(g,payload['package'])})
+    except (Invalid,json.JSONDecodeError,TypeError,ValueError) as e:return JsonResponse({'ok':False,'error':str(e)},status=400)
+
+@login_required
+@require_POST
+def portability_import(request,guild_id):
+    from .modules.core import require
+    from .portability import import_guild
+    try:
+        g=get_object_or_404(Guild,pk=guild_id);require(access(request.user,g),'owner')
+        payload=_portability_request(request)
+        result=import_guild(g,request.user,payload['package'],payload.get('digest'),payload.get('confirmation'))
+        return JsonResponse({'ok':True,'result':result})
+    except (Invalid,json.JSONDecodeError,TypeError,ValueError) as e:return JsonResponse({'ok':False,'error':str(e)},status=400)
+
+@login_required
 @require_POST
 def action(request,guild_id,module,name):
     try:
