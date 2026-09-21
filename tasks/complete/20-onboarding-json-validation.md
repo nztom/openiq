@@ -1,7 +1,7 @@
 # Reject malformed onboarding JSON without server errors
 
 Priority: P2  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -29,4 +29,16 @@ None.
 
 Use authenticated request tests for array/null/string/number bodies, malformed
 JSON, missing fields, and valid onboarding in local and production modes.
-Run relevant automated regressions on Linux and Windows before completion.
+Run relevant automated regressions on Linux before completion.
+
+## Implementation status
+
+- Onboarding now verifies that decoded JSON is an object before reading any
+  fields or checking Discord server authority.
+- Arrays, null, strings, numbers, malformed JSON, and missing fields return
+  JSON HTTP 400 responses without creating guild, access, or roster records.
+- Valid local and production onboarding plus existing Discord authorization
+  failures retain their prior behavior.
+- Linux validation on 2026-09-21 passed 104 onboarding, adapter, domain, and
+  workflow tests, a focused seven-test onboarding regression selection,
+  `manage.py check`, and `git diff --check`.

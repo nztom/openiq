@@ -97,7 +97,9 @@ def onboard(request):
         servers=[server for server in request.session.get('discord_guilds',[]) if can_manage_server(server)]
         return render(request,'onboard.html',{'servers':servers,'regions':regions,'development':settings.ALLOW_LOCAL_LOGIN,'client_id':os.getenv('DISCORD_CLIENT_ID','')})
     try:
-        p=json.loads(request.body);server_id=str(p.get('server_id',''))
+        p=json.loads(request.body)
+        if not isinstance(p,dict):raise Invalid('Onboarding payload must be a JSON object')
+        server_id=str(p.get('server_id',''))
         if not settings.ALLOW_LOCAL_LOGIN:
             from .discord_auth import can_manage_server
             if not request.session.get('discord_tokens') or not request.user.username.startswith('discord_'):
