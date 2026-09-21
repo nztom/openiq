@@ -6,11 +6,13 @@ from django.conf import settings
 from django.contrib.auth import login,logout
 from django.contrib.auth.views import LoginView
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect,render
 from django.db import transaction
 from django.views.decorators.http import require_POST
 from guilds.models import Guild,Access
+from guilds.services import require_active
 
 API='https://discord.com/api/v10'
 MANAGE_GUILD=0x20
@@ -50,6 +52,7 @@ def session_servers(servers):
     return [{'id':str(server['id']),'name':str(server.get('name',''))[:100],'owner':bool(server.get('owner')),'permissions':str(server.get('permissions','0'))} for server in servers if str(server.get('id','')).isdecimal()]
 
 def synchronize(user,token):
+    require_active(user)
     headers={'Authorization':'Bearer '+token}
     with httpx.Client(timeout=15) as client:
         response=client.get(API+'/users/@me/guilds',headers=headers);response.raise_for_status();servers={str(s['id']):s for s in response.json()}
@@ -79,6 +82,7 @@ def callback(request):
         response=httpx.post(API+'/oauth2/token',data={'client_id':client,'client_secret':secret,'grant_type':'authorization_code','code':request.GET.get('code',''),'redirect_uri':uri},timeout=15);response.raise_for_status();tokens=response.json()
         response=httpx.get(API+'/users/@me',headers={'Authorization':'Bearer '+tokens['access_token']},timeout=15);response.raise_for_status();profile=response.json()
         user,created=User.objects.get_or_create(username='discord_'+profile['id'])
+        require_active(user)
         if created or user.has_usable_password():user.set_unusable_password();user.save()
         servers=synchronize(user,tokens['access_token']);login(request,user)
         request.session['discord_tokens']={'access':tokens['access_token'],'refresh':tokens.get('refresh_token'),'expires':time.time()+tokens['expires_in']};request.session['discord_checked']=time.time()
@@ -97,7 +101,7 @@ class RefreshDiscordRoles:
                     if not refresh:raise KeyError('refresh')
                     client,secret,_=credentials();response=httpx.post(API+'/oauth2/token',data={'client_id':client,'client_secret':secret,'grant_type':'refresh_token','refresh_token':refresh},timeout=15);response.raise_for_status();data=response.json();tokens={'access':data['access_token'],'refresh':data.get('refresh_token',refresh),'expires':time.time()+data['expires_in']};request.session['discord_tokens']=tokens
                 request.session['discord_guilds']=synchronize(request.user,tokens['access']);request.session['discord_checked']=time.time()
-            except (httpx.HTTPError,KeyError,TypeError,ValueError):
+            except (httpx.HTTPError,KeyError,TypeError,ValueError,PermissionDenied):
                 # Fail closed when current Discord privileges cannot be verified.
                 logout(request);return redirect('/login/')
         return self.get_response(request)

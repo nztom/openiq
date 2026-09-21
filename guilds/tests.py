@@ -23,6 +23,15 @@ class DomainTests(TestCase):
     def event(self,**kw):return self.run_action('events','save',{'title':'Fight','at':'2026-08-01T20:00:00+12:00','teams':[{'name':'Front','capacity':1}],**kw})
     def test_member_cannot_write_wars(self):
         with self.assertRaises(PermissionDenied):self.run_action('wars','save',{},self.member)
+    def test_inactive_accounts_are_denied_and_reactivation_restores_access(self):
+        self.owner.is_active=False;self.owner.save()
+        self.g.refresh_from_db()
+        before=(self.g.revision,Record.objects.count(),Outbox.objects.count())
+        with self.assertRaisesMessage(PermissionDenied,'inactive'):self.run_action('commands','run',{'command':'guildstats'})
+        with self.assertRaisesMessage(PermissionDenied,'inactive'):self.run_action('community','reminder',{'text':'Denied','at':'2099-01-01T00:00:00Z'})
+        self.g.refresh_from_db();self.assertEqual((self.g.revision,Record.objects.count(),Outbox.objects.count()),before)
+        self.owner.is_active=True;self.owner.save()
+        self.assertEqual(self.run_action('commands','run',{'command':'guildstats'})['wars'],0)
     def test_cross_guild_references_rejected(self):
         other=Guild.objects.create(name='Other');Record.objects.create(guild=other,kind='member',key='foreign',data={'name':'Other'})
         with self.assertRaises(Invalid):self.war(participants=[{'member':'foreign','kills':2,'deaths':1}])

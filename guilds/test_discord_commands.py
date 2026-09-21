@@ -6,7 +6,7 @@ from django.core.management import call_command
 from .models import Guild,Access,Record
 from .modules.commands import COMMANDS
 from .modules.core import Invalid
-from .discord_commands import build_command,normalize,autocomplete
+from .discord_commands import build_command,normalize,autocomplete_choices
 
 
 class NativeCommandTests(TestCase):
@@ -35,22 +35,26 @@ class NativeCommandTests(TestCase):
         Record.objects.create(guild=guild,kind='reminder',key='own',data={'user':user.pk,'text':'Own reminder'})
         Record.objects.create(guild=guild,kind='reminder',key='other',data={'user':999,'text':'Private reminder'})
         interaction=Mock();interaction.guild_id=123;interaction.guild.owner_id=7;interaction.user.id=7;interaction.user.roles=[];interaction.user.guild_permissions.value=8;interaction.namespace.guild_name=''
-        self.assertEqual([c.value for c in async_to_sync(autocomplete('reminder'))(interaction,'')],['own'])
-        self.assertEqual([c.value for c in async_to_sync(autocomplete('guild'))(interaction,'Gui')],['Guild'])
-        self.assertEqual(async_to_sync(autocomplete('war'))(interaction,''),[])
+        self.assertEqual([c.value for c in autocomplete_choices('reminder',interaction,'')],['own'])
+        self.assertEqual([c.value for c in autocomplete_choices('guild',interaction,'Gui')],['Guild'])
+        user.is_active=False;user.save()
+        self.assertEqual(autocomplete_choices('guild',interaction,'Gui'),[])
+        self.assertEqual(autocomplete_choices('reminder',interaction,''),[])
+        user.is_active=True;user.save()
+        self.assertEqual(autocomplete_choices('war',interaction,''),[])
         for i in range(26):Record.objects.create(guild=guild,kind='member',key=str(i),data={'name':'Member '+str(i)})
-        self.assertEqual(len(async_to_sync(autocomplete('member'))(interaction,'')),25)
-        self.assertEqual(async_to_sync(autocomplete('member'))(interaction,'missing'),[])
+        self.assertEqual(len(autocomplete_choices('member',interaction,'')),25)
+        self.assertEqual(autocomplete_choices('member',interaction,'missing'),[])
         Guild.objects.create(name='Other Guild',server_id='123')
-        self.assertEqual(async_to_sync(autocomplete('member'))(interaction,''),[])
+        self.assertEqual(autocomplete_choices('member',interaction,''),[])
         interaction.namespace.guild_name='Guild'
-        self.assertEqual(len(async_to_sync(autocomplete('member'))(interaction,'')),25)
+        self.assertEqual(len(autocomplete_choices('member',interaction,'')),25)
         interaction.guild.owner_id=999;interaction.user.guild_permissions.value=0
-        self.assertEqual(async_to_sync(autocomplete('member'))(interaction,''),[])
+        self.assertEqual(autocomplete_choices('member',interaction,''),[])
         guild.config={'roles':{'member':['42']}};guild.save();interaction.user.roles=[Mock(id=42)]
-        self.assertEqual(async_to_sync(autocomplete('assignment'))(interaction,''),[])
+        self.assertEqual(autocomplete_choices('assignment',interaction,''),[])
         interaction.guild=None
-        self.assertEqual(async_to_sync(autocomplete('member'))(interaction,''),[])
+        self.assertEqual(autocomplete_choices('member',interaction,''),[])
 
     def test_native_link_creates_discord_identity(self):
         guild=Guild.objects.create(name='Guild',server_id='123')

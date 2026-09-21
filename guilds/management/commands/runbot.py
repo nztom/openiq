@@ -8,10 +8,16 @@ from django.contrib.auth.models import User
 from guilds.models import Guild,Access,Record
 from guilds.modules.commands import COMMANDS
 from guilds.discord_auth import role_for
-from guilds.services import execute
+from guilds.services import execute,require_active
 from guilds.modules.core import Invalid
 from guilds.discord_responses import respond,error_message,command_result
 from guilds.discord_commands import build_command,normalize
+
+def discord_user(discord_id):
+    user,created=User.objects.get_or_create(username='discord_'+str(discord_id))
+    if created:user.set_unusable_password();user.save()
+    require_active(user)
+    return user
 
 class Command(BaseCommand):
     help='Connect the optional Discord bot. Requires credentials and explicit delivery enablement.'
@@ -65,8 +71,7 @@ class Command(BaseCommand):
                     candidates=Guild.objects.filter(server_id=str(interaction.guild_id))
                     if guild_name:candidates=candidates.filter(name__iexact=guild_name)
                     if candidates.count()!=1:raise Invalid('Specify guild_name to select a configured BDO guild.')
-                    g=candidates.get();user,created=User.objects.get_or_create(username='discord_'+str(interaction.user.id))
-                    if created:user.set_unusable_password();user.save()
+                    g=candidates.get();user=discord_user(interaction.user.id)
                     tier=role_for(g,{'owner':interaction.guild.owner_id==interaction.user.id,'permissions':str(interaction.user.guild_permissions.value)},[r.id for r in interaction.user.roles])
                     if not tier:
                         Access.objects.filter(guild=g,user=user).delete();raise Invalid('Your Discord roles do not grant access.')
@@ -75,7 +80,7 @@ class Command(BaseCommand):
                     if channel and str(channel)!=str(interaction.channel_id):raise Invalid('Use the configured command channel.')
                     arguments=normalize(command,values)
                     if command=='link':
-                        linked,_=User.objects.get_or_create(username='discord_'+arguments['discord_id'],defaults={'password':'!'})
+                        linked=discord_user(arguments['discord_id'])
                         arguments['user_id']=linked.pk
                     result=execute(user,g.pk,'commands','run',{'command':command,'arguments':arguments})
                     if command in {'gear','gearupdate','gearlist'}:
@@ -95,7 +100,7 @@ class Command(BaseCommand):
             @sync_to_async
             def apply_component():
                 from guilds.discord_components import process
-                user,_=User.objects.get_or_create(username='discord_'+str(interaction.user.id),defaults={'password':'!'})
+                user=discord_user(interaction.user.id)
                 gid=custom_id.split(':')[1];g=Guild.objects.get(pk=gid)
                 if g.server_id!=str(interaction.guild_id):raise Invalid('Wrong server')
                 tier=role_for(g,{'owner':interaction.guild.owner_id==interaction.user.id,'permissions':str(interaction.user.guild_permissions.value)},[r.id for r in interaction.user.roles])

@@ -71,30 +71,33 @@ def normalize(command, supplied):
     return result
 
 
+def autocomplete_choices(kind,interaction,current):
+    if interaction.guild is None:return []
+    from django.contrib.auth.models import User
+    account=User.objects.filter(username='discord_'+str(interaction.user.id)).values_list('is_active',flat=True).first()
+    if account is False:return []
+    servers=Guild.objects.filter(server_id=str(interaction.guild_id))
+    selected=getattr(interaction.namespace,'guild_name','')
+    if selected:servers=servers.filter(name__iexact=selected)
+    allowed=[]
+    for guild in servers:
+        tier=role_for(guild,{'owner':interaction.guild.owner_id==interaction.user.id,'permissions':str(interaction.user.guild_permissions.value)},[r.id for r in interaction.user.roles])
+        if tier and (kind!='assignment' or tier!='member'):allowed.append(guild)
+    if kind=='guild':return [app_commands.Choice(name=g.name[:100],value=g.name) for g in allowed if current.casefold() in g.name.casefold()][:25]
+    if len(allowed)!=1:return []
+    result=[]
+    uid=User.objects.filter(username='discord_'+str(interaction.user.id)).values_list('pk',flat=True).first()
+    for record in Record.objects.filter(guild=allowed[0],kind=kind).order_by('-created'):
+        if kind=='reminder' and record.data.get('user')!=uid:continue
+        label=str(record.data.get('name') or record.data.get('title') or record.data.get('text') or record.data.get('date') or record.key)
+        if current.casefold() in label.casefold():result.append(app_commands.Choice(name=label[:100],value=record.key))
+        if len(result)==25:return result
+    return result
+
+
 def autocomplete(kind):
     async def complete(interaction, current):
-        @sync_to_async
-        def choices():
-            if interaction.guild is None:return []
-            servers=Guild.objects.filter(server_id=str(interaction.guild_id))
-            selected=getattr(interaction.namespace,'guild_name','')
-            if selected:servers=servers.filter(name__iexact=selected)
-            allowed=[]
-            for guild in servers:
-                tier=role_for(guild,{'owner':interaction.guild.owner_id==interaction.user.id,'permissions':str(interaction.user.guild_permissions.value)},[r.id for r in interaction.user.roles])
-                if tier and (kind!='assignment' or tier!='member'):allowed.append(guild)
-            if kind=='guild':return [app_commands.Choice(name=g.name[:100],value=g.name) for g in allowed if current.casefold() in g.name.casefold()][:25]
-            if len(allowed)!=1:return []
-            result=[]
-            from django.contrib.auth.models import User
-            uid=User.objects.filter(username='discord_'+str(interaction.user.id)).values_list('pk',flat=True).first()
-            for record in Record.objects.filter(guild=allowed[0],kind=kind).order_by('-created'):
-                if kind=='reminder' and record.data.get('user')!=uid:continue
-                label=str(record.data.get('name') or record.data.get('title') or record.data.get('text') or record.data.get('date') or record.key)
-                if current.casefold() in label.casefold():result.append(app_commands.Choice(name=label[:100],value=record.key))
-                if len(result)==25:return result
-            return result
-        return await choices()
+        return await sync_to_async(autocomplete_choices)(kind,interaction,current)
     return complete
 
 

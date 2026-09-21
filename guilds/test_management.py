@@ -102,6 +102,17 @@ class ManagementTests(TestCase):
         self.assertIn('server',interaction.response.send_message.call_args.args[0])
         interaction.data={'custom_id':'signup:1:key:0'};async_to_sync(bot.on_interaction)(interaction)
         self.assertIn('server',interaction.response.send_message.call_args.args[0])
+    def test_bot_denies_inactive_accounts_before_access_or_identity_changes(self):
+        from django.core.exceptions import PermissionDenied
+        from .management.commands.runbot import discord_user
+        user=User.objects.create_user('discord_88',is_active=False)
+        Access.objects.create(guild=self.g,user=user,role='member')
+        with self.assertRaisesMessage(PermissionDenied,'inactive'):discord_user(88)
+        self.assertEqual(Access.objects.get(guild=self.g,user=user).role,'member')
+        user.is_active=True;user.save()
+        self.assertEqual(discord_user(88),user)
+        created=discord_user(99)
+        self.assertTrue(created.is_active);self.assertFalse(created.has_usable_password())
     def test_bot_supports_guild_scoped_sync_and_validates_sync_mode(self):
         from unittest.mock import AsyncMock
         from asgiref.sync import async_to_sync

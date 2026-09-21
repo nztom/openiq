@@ -42,6 +42,14 @@ class CaptureApiTests(TestCase):
         Access.objects.filter(user=self.user).delete()
         self.assertEqual(self.post().status_code,403)
 
+    def test_inactive_issuer_cannot_ingest_until_reactivated(self):
+        self.user.is_active=False;self.user.save()
+        self.assertEqual(self.post().status_code,403)
+        data=get(self.g,'session',self.session).data
+        self.assertEqual(data['events'],[]);self.assertNotIn('capture_diagnostics',data)
+        self.user.is_active=True;self.user.save()
+        self.assertEqual(self.post().status_code,200)
+
     def test_forwarder_retries_same_batch_then_replays_after_restart(self):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'events.jsonl';path.write_text(json.dumps(self.event)+'\n')
