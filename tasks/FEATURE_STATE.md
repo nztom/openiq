@@ -1,6 +1,6 @@
 # Feature state
 
-Last reviewed: 2026-09-17.
+Last reviewed: 2026-09-21.
 
 OpenIQ is a self-hosted, small-guild Django application. The local release gate
 validates its offline workflows using disposable storage, synthetic OCR/packet
@@ -10,8 +10,8 @@ guild installation.
 
 | Area | State | Boundary |
 | --- | --- | --- |
-| Core guild workflows | Existing regression suite passes; review found validation and response gaps | Tasks 18, 20 and 21 track reproduced defects; a real officer/member event and war still need acceptance. |
-| Access, privacy, and settings | Regression-covered with an inactive-account gap | Task 19 tracks shared-service/Discord inactive-account enforcement. |
+| Core guild workflows | Existing regression suite passes; challenge-response redaction remains open | Tasks 18 and 20 resolved roster and onboarding validation defects; task 21 tracks pending-roll disclosure. A real officer/member event and war still need acceptance. |
+| Access, privacy, and settings | Inactive-account denial is enforced at shared-service, Discord, OAuth, autocomplete, and capture boundaries | Task 19 resolved the reproduced authorization gap. |
 | Discord/OAuth/delivery | Bot connected and global commands synced on the Pi Swarm; workflow behavior remains mock-validated | Staging permissions, command use, restarts, and ambiguous remote outcomes need live validation. |
 | BDO capture and OCR | Synthetic fixtures validated | Current-patch traffic, regional screenshots, and sustained capture are unverified. |
 | Backup, restore, upgrade | Commands and Compose support implemented | Rehearse off-host backup, restore, and failed-upgrade recovery on the selected host. |
