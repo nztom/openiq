@@ -1,7 +1,7 @@
 # Provide scheduled jobs with the Swarm SQLite runtime
 
 Priority: P1  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -36,4 +36,5 @@ bot runtime); task 07 retains live Discord recovery acceptance.
 Run focused supervision and scheduler tests, render deployment examples, and
 exercise due jobs/restart in a disposable Swarm deployment. Do not send test
 messages to a production Discord guild.
-Run relevant automated regressions on Linux and Windows before completion.
+Run relevant automated regressions on Linux and a disposable Linux Swarm before
+completion.
