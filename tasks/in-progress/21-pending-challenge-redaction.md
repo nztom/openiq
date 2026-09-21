@@ -1,7 +1,7 @@
 # Keep challenge rolls hidden until acceptance
 
 Priority: P2  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -30,4 +30,4 @@ None.
 
 Cover member HTTP create/state/accept responses and shared-service responses;
 assert the pending value exists only in storage.
-Run relevant automated regressions on Linux and Windows before completion.
+Run relevant automated regressions on Linux before completion.
