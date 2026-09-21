@@ -1,7 +1,7 @@
 # Keep challenge rolls hidden until acceptance
 
 Priority: P2  
-Owner: unassigned
+Owner: Codex
 
 ## Problem
 
@@ -30,4 +30,15 @@ None.
 
 Cover member HTTP create/state/accept responses and shared-service responses;
 assert the pending value exists only in storage.
-Run relevant automated regressions on Linux and Windows before completion.
+Run relevant automated regressions on Linux before completion.
+
+## Implementation status
+
+- Public record serialization now removes the stored roll from pending
+  challenges for every caller and transport; the state view uses that shared
+  behavior instead of a view-only special case.
+- Acceptance still reads the original stored roll, and completed responses and
+  state expose both rolls and the winner.
+- Linux validation on 2026-09-21 passed the focused service/HTTP challenge test,
+  88 domain, workflow, permission, and component tests, `manage.py check`, and
+  `git diff --check`.

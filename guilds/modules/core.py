@@ -43,7 +43,10 @@ def save(g,kind,data,key=None):
     obj,_=Record.objects.update_or_create(guild=g,kind=kind,key=key,defaults={'data':data})
     return obj
 
-def public(obj): return {'id':obj.key,**obj.data}
+def public(obj):
+    result={'id':obj.key,**obj.data}
+    if obj.kind=='challenge' and result.get('status')=='pending':result.pop('roll',None)
+    return result
 def kdr(k,d): return round(k/d,3) if d else (None if k else 0)
 def own_member(g,user):
     return next((r for r in rows(g,'member') if str(r.data.get('user_id'))==str(user.pk)),None)

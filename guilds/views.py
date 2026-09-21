@@ -28,7 +28,6 @@ def state(request,guild_id):
         if r.kind in ['ticket','application','reminder','minigame'] and role=='member' and r.data.get('user',r.key)!=request.user.pk and str(r.data.get('user',r.key))!=str(request.user.pk): continue
         d=public(r)
         if r.kind=='member' and role=='member': d.pop('notes',None)
-        if r.kind=='challenge' and d.get('status')=='pending':d.pop('roll',None)
         if r.kind=='session': d['summary']=live.summarize(r)
         records.setdefault(r.kind,[]).append(d)
     records['alliance']=alliances.overview(g)
