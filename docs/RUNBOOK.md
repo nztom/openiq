@@ -145,6 +145,9 @@ checks database, migrations and storage. `RUN_DISCORD_BOT=1` and
   [PRIVACY.md](PRIVACY.md) describes member export/unlink/anonymization/deletion;
   `retention` previews age-based cleanup. Historical war scores stay anonymous
   when member identifiers are removed.
+- **Guild transfer:** owners use the Settings export/import workflow described
+  in [PORTABILITY.md](PORTABILITY.md). Review every preview conflict and
+  reconnect external accounts and integrations after import.
 - **Delivery failures:** inspect logs and outbox state. Rate limits retry with
   backoff; an ambiguous remote creation is marked `uncertain` for inspection. Resolve
   the remote outcome before retrying. Do not delete idempotency records merely

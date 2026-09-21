@@ -14,6 +14,12 @@ through the same scoped API. Exports include that member's scores and owned
 records; member exports omit private officer notes and coaching assignments.
 Ask the guild operator to review any additional private records for an export.
 
+Whole-guild transfers use the owner-only workflow in
+[PORTABILITY.md](PORTABILITY.md). Those exports omit account and external
+service links, credentials, delivery state, tickets, applications, reminders,
+and live capture sessions, but they can include private coaching records; treat
+the downloaded JSON as sensitive guild data.
+
 Anonymization requires typing the member's current name. It replaces identifying
 roster fields with an inactive anonymous entry, removes owned tickets,
 applications, reminders, gear/coaching and capture credentials, and scrubs known

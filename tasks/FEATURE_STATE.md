@@ -18,7 +18,7 @@ guild installation.
 | PostgreSQL | Adapter and integration tests exist | Run them against the selected PostgreSQL version and matching client tools. |
 | Deployment and operations | Pi Swarm deployment active; public proxy routing, backups, and embedded bot observed | Restore/failed-upgrade rehearsal, monitoring/alerts, capacity, and guild-facing acceptance remain unverified. |
 | Scheduled jobs on Swarm | Implemented and disposable-Swarm validated | Task 22 adds an opt-in, supervised scheduler sharing the single web replica's storage, readiness heartbeat, bounded interval configuration, and documented manual behavior when disabled. |
-| Portability and Critiq migration | Not implemented as user-facing import/export workflows | Tasks 11 and 14 cover instance transfer and Critiq XLSX import. |
+| Portability and Critiq migration | Versioned guild transfer implemented and browser-validated | Task 11 provides owner-only redacted export plus atomic preview/confirm import; Task 14 still covers Critiq XLSX import. |
 | Accessibility | Automated keyboard/layout/axe coverage | A person using a screen reader must complete the acceptance workflow. |
 
 Use the operator guides in `docs/` for setup and maintenance. Reproduction steps,

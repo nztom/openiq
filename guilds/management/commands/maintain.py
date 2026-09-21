@@ -10,6 +10,7 @@ from django.utils import timezone
 from guilds.models import Guild,Access,Record,Audit,Outbox
 from guilds.services import access,execute
 from guilds.modules.core import require
+from guilds.portability import export_guild
 
 
 class Command(BaseCommand):
@@ -27,10 +28,7 @@ class Command(BaseCommand):
         operation=options['operation']
         if operation=='export':
             if not options['output']:raise CommandError('Export requires --output')
-            records=[{'kind':r.kind,'key':r.key,'data':r.data,'created':r.created.isoformat()} for r in Record.objects.filter(guild=guild).exclude(kind__in=['capture_token','adoption'])]
-            package={'format':'openiq-guild-v1','guild':{'name':guild.name,'region':guild.region,'server_id':guild.server_id,'config':guild.config},'records':records,
-                     'access':list(Access.objects.filter(guild=guild).values('user__username','role')),'audit':list(Audit.objects.filter(guild=guild).values('actor','action','data','created')),
-                     'outbox':list(Outbox.objects.filter(guild=guild).values('key','channel','text','status'))}
+            package=export_guild(guild)
             with options['output'].open('x',encoding='utf-8') as stream:
                 options['output'].chmod(0o600);json.dump(package,stream,indent=2,default=str)
             self.stdout.write(str(options['output']));return

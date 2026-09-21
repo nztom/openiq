@@ -23,7 +23,8 @@ class MaintenanceTests(TestCase):
         save(self.g,'capture_token',{'digest':'private','expires':0},'token');save(self.other,'capture_token',{'expires':0},'other')
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory)/'guild.json';self.command('export',output=path)
-            self.assertNotIn('private',path.read_text());self.assertEqual(json.loads(path.read_text())['format'],'openiq-guild-v1')
+            self.assertNotIn('private',path.read_text());package=json.loads(path.read_text());self.assertEqual(package['format'],'openiq-guild-v1')
+            self.assertEqual(set(package),{'format','digest','payload','warnings'});self.assertNotIn('server_id',str(package))
         self.command('cleanup',apply=True)
         self.assertFalse(Record.objects.filter(guild=self.g,kind='capture_token').exists())
         self.assertTrue(Record.objects.filter(guild=self.other,kind='capture_token').exists())
